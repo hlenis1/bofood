@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  mysql-local:
+    image: mysql:8.0
+    container_name: bd_panaderia_local
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: panaderia_app
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
