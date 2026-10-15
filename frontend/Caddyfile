@@ -3,12 +3,13 @@
         format json
     }
 
-    # Redireccionar el tráfico /api hacia el servicio backend en la red Docker
-    handle /api/* {
+    # Coincidencia explícita para todas las peticiones a /api
+    @api path /api/*
+    handle @api {
         reverse_proxy chatpan_bofood:3000
     }
 
-    # Servir la SPA de React (Vite / Static)
+    # Manejador por defecto para servir la aplicación React
     handle {
         root * ../app/{$NIXPACKS_SPA_OUTPUT_DIR}
         encode gzip
