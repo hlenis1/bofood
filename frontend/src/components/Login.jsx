@@ -16,11 +16,11 @@ function Login() {
         e.preventDefault();
         try {
             if (esRegistro) {
-                await axios.post('http://localhost:3000/api/registro', form);
+                await axios.post('/api/registro', form);
                 alert('¡Registro exitoso! Ahora puedes iniciar sesión.');
                 setEsRegistro(false);
             } else {
-                const res = await axios.post('http://localhost:3000/api/login', { email: form.email, password: form.password });
+                const res = await axios.post('/api/login', { email: form.email, password: form.password });
                 
                 if (res.data.success) {
                     localStorage.setItem('usuario', JSON.stringify(res.data.user));

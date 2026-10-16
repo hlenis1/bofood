@@ -5,7 +5,7 @@ import { io } from 'socket.io-client';
 import { ConfigurarTienda } from './ConfigurarTienda';
 import { VendedorAprobarPago } from './VendedorAprobarPago';
 
-const socket = io('http://localhost:3000');
+const socket = io('');
 const obtenerDetalles = (d) => { try { return JSON.parse(d); } catch (e) { return []; } };
 
 function Vendedor() {
@@ -35,9 +35,9 @@ function Vendedor() {
     const audioNuevoPedido = new Audio('https://actions.google.com/sounds/v1/alarms/doorbell.ogg');
 
     const cargarDatos = (id) => {
-        axios.get('http://localhost:3000/api/productos').then(res => setMisProductos(res.data.filter(p => p.vendedor_id === id))).catch(console.error);
+        axios.get('/api/productos').then(res => setMisProductos(res.data.filter(p => p.vendedor_id === id))).catch(console.error);
             
-        axios.get('http://localhost:3000/api/usuarios').then(res => {
+        axios.get('/api/usuarios').then(res => {
             const yo = res.data.find(u => u.id === id);
             if (yo) {
                 setMiSaldo(Number(yo.saldo));
@@ -46,13 +46,13 @@ function Vendedor() {
             }
         }).catch(console.error);
 
-        axios.get(`http://localhost:3000/api/vendedor/tienda/${id}`)
+        axios.get(`/api/vendedor/tienda/${id}`)
             .then(res => setDatosTienda(res.data))
             .catch(console.error);
 
-        axios.get('http://localhost:3000/api/recargas').then(res => setRecargas(res.data.filter(r => r.usuario_id === id))).catch(console.error);
-        axios.get('http://localhost:3000/api/bancos').then(res => { setBancos(res.data); if(res.data.length > 0) setFormRecarga(prev => ({...prev, banco_destino: res.data[0].nombre})); }).catch(console.error);
-        axios.get('http://localhost:3000/api/pedidos').then(res => setPedidos(res.data)).catch(console.error);
+        axios.get('/api/recargas').then(res => setRecargas(res.data.filter(r => r.usuario_id === id))).catch(console.error);
+        axios.get('/api/bancos').then(res => { setBancos(res.data); if(res.data.length > 0) setFormRecarga(prev => ({...prev, banco_destino: res.data[0].nombre})); }).catch(console.error);
+        axios.get('/api/pedidos').then(res => setPedidos(res.data)).catch(console.error);
     };
 
     useEffect(() => {
@@ -73,7 +73,7 @@ function Vendedor() {
         const estadoActual = datosTienda?.abierta !== undefined ? (datosTienda.abierta ? 1 : 0) : 1;
         const nuevoEstado = estadoActual === 1 ? 0 : 1;
         try {
-            await axios.put(`http://localhost:3000/api/vendedor/tienda/${usuarioInfo.id}/estado`, { abierta: nuevoEstado });
+            await axios.put(`/api/vendedor/tienda/${usuarioInfo.id}/estado`, { abierta: nuevoEstado });
             setDatosTienda(prev => prev ? { ...prev, abierta: nuevoEstado } : { usuario_id: usuarioInfo.id, abierta: nuevoEstado });
             alert(`Tu tienda ahora está ${nuevoEstado === 1 ? 'ABIERTA 🟢' : 'CERRADA 🔴'}`);
         } catch (error) {
@@ -82,7 +82,7 @@ function Vendedor() {
     };
 
     const cambiarEstadoPedido = async (id, nuevoEstado) => {
-        try { await axios.put(`http://localhost:3000/api/pedidos/${id}/estado`, { estado: nuevoEstado }); cargarDatos(usuarioInfo.id); } catch (error) { alert('Error al actualizar'); }
+        try { await axios.put(`/api/pedidos/${id}/estado`, { estado: nuevoEstado }); cargarDatos(usuarioInfo.id); } catch (error) { alert('Error al actualizar'); }
     };
 
     const subirProducto = async (e) => {
@@ -94,7 +94,7 @@ function Vendedor() {
         if (archivoFoto) formData.append('imagen', archivoFoto);
 
         try {
-            await axios.post('http://localhost:3000/api/productos', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+            await axios.post('/api/productos', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
             alert('¡Producto subido a la tienda con éxito!');
             setNuevoNombre(''); setNuevoPrecio(''); setArchivoFoto(null); cargarDatos(usuarioInfo.id);
         } catch (error) { alert('Error al subir'); }
@@ -102,15 +102,15 @@ function Vendedor() {
 
     const toggleDisp = async (id, estadoActual) => {
         if (!estadoActual && miSaldo <= 0) return alert("❌ No puedes activar productos porque tu saldo está en $0. Por favor, recarga tu billetera.");
-        try { await axios.put(`http://localhost:3000/api/productos/${id}/disponibilidad`, { disponible: !estadoActual }); cargarDatos(usuarioInfo.id); } catch (error) { alert('Error'); }
+        try { await axios.put(`/api/productos/${id}/disponibilidad`, { disponible: !estadoActual }); cargarDatos(usuarioInfo.id); } catch (error) { alert('Error'); }
     };
 
-    const eliminar = async (id) => { if(window.confirm("¿Borrar este producto?")) { await axios.delete(`http://localhost:3000/api/productos/${id}`); cargarDatos(usuarioInfo.id); } };
+    const eliminar = async (id) => { if(window.confirm("¿Borrar este producto?")) { await axios.delete(`/api/productos/${id}`); cargarDatos(usuarioInfo.id); } };
 
     const solicitarRecarga = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:3000/api/recargas', { usuario_id: usuarioInfo.id, monto: formRecarga.monto, referencia: formRecarga.referencia, banco_destino: formRecarga.banco_destino });
+            await axios.post('/api/recargas', { usuario_id: usuarioInfo.id, monto: formRecarga.monto, referencia: formRecarga.referencia, banco_destino: formRecarga.banco_destino });
             alert("Solicitud enviada. Espera a que el Admin la apruebe.");
             setFormRecarga({ monto: '', referencia: '', banco_destino: bancos[0]?.nombre || '' });
             cargarDatos(usuarioInfo.id);
@@ -120,7 +120,7 @@ function Vendedor() {
     const guardarCuentaRetiro = async (e) => {
         e.preventDefault();
         try {
-            await axios.put(`http://localhost:3000/api/usuarios/${usuarioInfo.id}/cuenta-retiro`, { cuenta_retiro: cuentaRetiro });
+            await axios.put(`/api/usuarios/${usuarioInfo.id}/cuenta-retiro`, { cuenta_retiro: cuentaRetiro });
             alert("Cuenta de cobro actualizada exitosamente. El administrador la verá al pagarte.");
         } catch(error) { alert("Error al guardar cuenta"); }
     };
@@ -181,7 +181,7 @@ function Vendedor() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {datosTienda?.logo_url && (
                             <img 
-                                src={`http://localhost:3000${datosTienda.logo_url}`} 
+                                src={`${datosTienda.logo_url}`} 
                                 alt="Logo" 
                                 style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', border: '2px solid white' }} 
                             />

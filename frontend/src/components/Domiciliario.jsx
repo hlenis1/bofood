@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3000');
+const socket = io('');
 
 const calcularDistancia = (lat1, lon1, lat2, lon2) => {
     const R = 6371; 
@@ -59,11 +59,11 @@ function Domiciliario() {
 
     const cargarMisDatos = async (id) => {
         try {
-            const res = await axios.get('http://localhost:3000/api/usuarios');
+            const res = await axios.get('/api/usuarios');
             const yo = res.data.find(u => u.id === id);
             if (yo) setMiSaldo(Number(yo.saldo));
             
-            const resBancos = await axios.get('http://localhost:3000/api/bancos');
+            const resBancos = await axios.get('/api/bancos');
             setBancos(resBancos.data);
             if(resBancos.data.length > 0) {
                 setFormRecarga(prev => ({...prev, banco_destino: resBancos.data[0].nombre}));
@@ -73,7 +73,7 @@ function Domiciliario() {
 
     const cargarRecargas = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/recargas');
+            const res = await axios.get('/api/recargas');
             setRecargas(res.data.filter(r => r.usuario_id === usuarioInfo?.id));
         } catch (error) { console.error(error); }
     };
@@ -95,7 +95,7 @@ function Domiciliario() {
     useEffect(() => {
         if (!usuarioInfo) return; 
         const cargarPedidos = () => {
-            axios.get('http://localhost:3000/api/pedidos').then(res => setPedidos(res.data)).catch(console.error);
+            axios.get('/api/pedidos').then(res => setPedidos(res.data)).catch(console.error);
             cargarMisDatos(usuarioInfo.id);
         };
         cargarPedidos();
@@ -154,7 +154,7 @@ function Domiciliario() {
 
     const cambiarEstado = async (id, nuevoEstado, motivo = null) => {
         try {
-            await axios.put(`http://localhost:3000/api/pedidos/${id}/estado`, { estado: nuevoEstado, motivo_cancelacion: motivo, domiciliario_id: usuarioInfo.id });
+            await axios.put(`/api/pedidos/${id}/estado`, { estado: nuevoEstado, motivo_cancelacion: motivo, domiciliario_id: usuarioInfo.id });
             if (nuevoEstado === 'llevando_tu_pedido') alert("¡Viaje iniciado! Tu ubicación se transmite al cliente.");
             else if (nuevoEstado === 'entregado' || nuevoEstado === 'cancelado_devuelto') {
                 setModalCancelacion(null);
@@ -176,7 +176,7 @@ function Domiciliario() {
     const solicitarRecarga = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:3000/api/recargas', { usuario_id: usuarioInfo.id, monto: formRecarga.monto, referencia: formRecarga.referencia, banco_destino: formRecarga.banco_destino });
+            await axios.post('/api/recargas', { usuario_id: usuarioInfo.id, monto: formRecarga.monto, referencia: formRecarga.referencia, banco_destino: formRecarga.banco_destino });
             alert("Solicitud de recarga enviada. Espera a que el Admin la apruebe.");
             setFormRecarga({ monto: '', referencia: '', banco_destino: bancos[0]?.nombre || '' });
             cargarRecargas();

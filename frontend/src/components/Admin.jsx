@@ -5,7 +5,7 @@ import { io } from 'socket.io-client';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const socket = io('http://localhost:3000');
+const socket = io('');
 
 function Admin() {
     const navigate = useNavigate();
@@ -76,14 +76,14 @@ function Admin() {
     }, [navigate]);
 
     const cargarTodo = () => {
-        axios.get('http://localhost:3000/api/pedidos').then(res => setPedidos(res.data)).catch(() => {});
-        axios.get('http://localhost:3000/api/usuarios').then(res => setUsuarios(res.data)).catch(() => {});
-        axios.get('http://localhost:3000/api/recargas').then(res => setRecargas(res.data)).catch(() => {});
-        axios.get('http://localhost:3000/api/productos').then(res => setProductos(res.data)).catch(() => {});
-        axios.get('http://localhost:3000/api/tiendas').then(res => setTiendas(res.data)).catch(() => {});
-        axios.get('http://localhost:3000/api/bancos').then(res => setBancos(res.data)).catch(() => {});
+        axios.get('/api/pedidos').then(res => setPedidos(res.data)).catch(() => {});
+        axios.get('/api/usuarios').then(res => setUsuarios(res.data)).catch(() => {});
+        axios.get('/api/recargas').then(res => setRecargas(res.data)).catch(() => {});
+        axios.get('/api/productos').then(res => setProductos(res.data)).catch(() => {});
+        axios.get('/api/tiendas').then(res => setTiendas(res.data)).catch(() => {});
+        axios.get('/api/bancos').then(res => setBancos(res.data)).catch(() => {});
         
-        axios.get('http://localhost:3000/api/config-admin').then(res => {
+        axios.get('/api/config-admin').then(res => {
             if (res.data) {
                 setConfigAdmin({
                     latitud: res.data.latitud || '',
@@ -104,7 +104,7 @@ function Admin() {
         if (!usuarioInfo) return;
         cargarTodo();
 
-        axios.get(`http://localhost:3000/api/vendedor/tienda/${usuarioInfo.id}`)
+        axios.get(`/api/vendedor/tienda/${usuarioInfo.id}`)
             .then(res => {
                 if (res.data) {
                     let dirTexto = res.data.direccion || '';
@@ -144,7 +144,7 @@ function Admin() {
     // ==========================================
     const aprobarPagoAdmin = async (pedidoId, estadoPago) => {
         try {
-            await axios.put(`http://localhost:3000/api/pedidos/${pedidoId}/aprobar-pago`, { estado_pago: estadoPago });
+            await axios.put(`/api/pedidos/${pedidoId}/aprobar-pago`, { estado_pago: estadoPago });
             alert(estadoPago === 'aprobado' ? '✅ ¡Pago verificado y aprobado!' : '❌ Pago rechazado.');
             cargarTodo();
         } catch (error) {
@@ -154,7 +154,7 @@ function Admin() {
 
     const cambiarEstadoPedido = async (id, nuevoEstado) => {
         try {
-            await axios.put(`http://localhost:3000/api/pedidos/${id}/estado`, { estado: nuevoEstado });
+            await axios.put(`/api/pedidos/${id}/estado`, { estado: nuevoEstado });
             cargarTodo();
         } catch (error) {
             alert('Error al actualizar el estado del pedido');
@@ -164,7 +164,7 @@ function Admin() {
     const eliminarPedido = async (id) => {
         if (!window.confirm('¿Seguro de eliminar este pedido del historial?')) return;
         try {
-            await axios.delete(`http://localhost:3000/api/pedidos/${id}`);
+            await axios.delete(`/api/pedidos/${id}`);
             cargarTodo();
         } catch (error) {
             alert('Error al eliminar');
@@ -181,7 +181,7 @@ function Admin() {
             : nuevoUsuario.direccion;
 
         try {
-            await axios.post('http://localhost:3000/api/usuarios', {
+            await axios.post('/api/usuarios', {
                 ...nuevoUsuario,
                 direccion: direccionFinal
             });
@@ -200,7 +200,7 @@ function Admin() {
             : usuarioEditando.direccion;
 
         try {
-            await axios.put(`http://localhost:3000/api/usuarios/${usuarioEditando.id}`, {
+            await axios.put(`/api/usuarios/${usuarioEditando.id}`, {
                 ...usuarioEditando,
                 direccion: direccionFinal
             });
@@ -215,7 +215,7 @@ function Admin() {
     const eliminarUsuario = async (id) => {
         if (!window.confirm('¿Eliminar usuario y todos sus pedidos asociados?')) return;
         try {
-            await axios.delete(`http://localhost:3000/api/usuarios/${id}`);
+            await axios.delete(`/api/usuarios/${id}`);
             cargarTodo();
         } catch (error) {
             alert('Error al eliminar usuario');
@@ -225,7 +225,7 @@ function Admin() {
     const pagarDeudaVendedor = async (vendedorId) => {
         if (!window.confirm('¿Confirmas que le has saldado las ganancias a este vendedor?')) return;
         try {
-            await axios.put(`http://localhost:3000/api/usuarios/${vendedorId}/pagar-deuda`);
+            await axios.put(`/api/usuarios/${vendedorId}/pagar-deuda`);
             alert('¡Deuda marcada como pagada!');
             cargarTodo();
         } catch (error) {
@@ -246,7 +246,7 @@ function Admin() {
         if (nuevoProducto.imagen) formData.append('imagen', nuevoProducto.imagen);
 
         try {
-            await axios.post('http://localhost:3000/api/productos', formData);
+            await axios.post('/api/productos', formData);
             alert('¡Producto publicado con éxito!');
             setNuevoProducto({ nombre: '', categoria: 'panaderia', precio: '', vendedor_id: '', imagen: null });
             cargarTodo();
@@ -257,7 +257,7 @@ function Admin() {
 
     const toggleDisponibilidad = async (id, estadoActual) => {
         try {
-            await axios.put(`http://localhost:3000/api/productos/${id}/disponibilidad`, { disponible: !estadoActual });
+            await axios.put(`/api/productos/${id}/disponibilidad`, { disponible: !estadoActual });
             cargarTodo();
         } catch (error) {
             alert(error.response?.data?.message || 'Error al cambiar disponibilidad');
@@ -267,7 +267,7 @@ function Admin() {
     const guardarEdicionProducto = async (e) => {
         e.preventDefault();
         try {
-            await axios.put(`http://localhost:3000/api/productos/${productoEditando.id}`, {
+            await axios.put(`/api/productos/${productoEditando.id}`, {
                 nombre: productoEditando.nombre,
                 precio: productoEditando.precio
             });
@@ -282,7 +282,7 @@ function Admin() {
     const eliminarProducto = async (id) => {
         if (!window.confirm('¿Seguro de eliminar este producto?')) return;
         try {
-            await axios.delete(`http://localhost:3000/api/productos/${id}`);
+            await axios.delete(`/api/productos/${id}`);
             cargarTodo();
         } catch (error) {
             alert('Error al eliminar producto');
@@ -295,7 +295,7 @@ function Admin() {
     const toggleEstadoTiendaAdmin = async (usuarioId, estadoActual) => {
         const nuevoEstado = estadoActual !== 0 ? 0 : 1;
         try {
-            await axios.put(`http://localhost:3000/api/vendedor/tienda/${usuarioId}/estado`, { abierta: nuevoEstado });
+            await axios.put(`/api/vendedor/tienda/${usuarioId}/estado`, { abierta: nuevoEstado });
             cargarTodo();
         } catch (error) {
             alert('Error al cambiar el estado de la tienda');
@@ -317,7 +317,7 @@ function Admin() {
         if (tiendaAdmin.logo) formData.append('logo', tiendaAdmin.logo);
 
         try {
-            await axios.post('http://localhost:3000/api/vendedor/tienda', formData);
+            await axios.post('/api/vendedor/tienda', formData);
             alert('¡Perfil de la tienda principal guardado!');
             cargarTodo();
         } catch (error) {
@@ -359,7 +359,7 @@ function Admin() {
         if (tiendaEditando.logo) formData.append('logo', tiendaEditando.logo);
 
         try {
-            await axios.post('http://localhost:3000/api/vendedor/tienda', formData);
+            await axios.post('/api/vendedor/tienda', formData);
             alert('¡Tienda actualizada con éxito!');
             setTiendaEditando(null);
             cargarTodo();
@@ -371,7 +371,7 @@ function Admin() {
     const eliminarTienda = async (usuarioId) => {
         if (!window.confirm('¿Seguro que deseas eliminar esta tienda del registro?')) return;
         try {
-            await axios.delete(`http://localhost:3000/api/vendedor/tienda/${usuarioId}`);
+            await axios.delete(`/api/vendedor/tienda/${usuarioId}`);
             alert('¡Tienda eliminada!');
             cargarTodo();
         } catch (error) {
@@ -390,7 +390,7 @@ function Admin() {
         if (nuevoBanco.imagen) formData.append('imagen', nuevoBanco.imagen);
 
         try {
-            await axios.post('http://localhost:3000/api/bancos', formData);
+            await axios.post('/api/bancos', formData);
             alert('¡Cuenta bancaria agregada!');
             setNuevoBanco({ nombre: '', numero: '', imagen: null });
             cargarTodo();
@@ -402,7 +402,7 @@ function Admin() {
     const eliminarBanco = async (id) => {
         if (!window.confirm('¿Eliminar esta cuenta bancaria?')) return;
         try {
-            await axios.delete(`http://localhost:3000/api/bancos/${id}`);
+            await axios.delete(`/api/bancos/${id}`);
             cargarTodo();
         } catch (error) {
             alert('Error al eliminar');
@@ -417,7 +417,7 @@ function Admin() {
         if (bancoAdmin.imagen) formData.append('imagen', bancoAdmin.imagen);
 
         try {
-            await axios.post('http://localhost:3000/api/config-banco', formData);
+            await axios.post('/api/config-banco', formData);
             alert('¡Cuenta Principal del Admin actualizada!');
             cargarTodo();
         } catch (error) {
@@ -428,7 +428,7 @@ function Admin() {
     const eliminarBancoAdmin = async () => {
         if (!window.confirm('¿Eliminar cuenta bancaria principal del Admin?')) return;
         try {
-            await axios.delete('http://localhost:3000/api/config-banco');
+            await axios.delete('/api/config-banco');
             cargarTodo();
         } catch (error) {
             alert('Error al eliminar');
@@ -440,7 +440,7 @@ function Admin() {
     // ==========================================
     const cambiarEstadoRecarga = async (id, estado) => {
         try {
-            await axios.put(`http://localhost:3000/api/recargas/${id}/estado`, { estado });
+            await axios.put(`/api/recargas/${id}/estado`, { estado });
             alert(`Recarga ${estado}`);
             cargarTodo();
         } catch (error) {
@@ -451,7 +451,7 @@ function Admin() {
     const guardarConfigAdmin = async (e) => {
         e.preventDefault();
         try {
-            await axios.put('http://localhost:3000/api/config-admin', configAdmin);
+            await axios.put('/api/config-admin', configAdmin);
             alert('¡Parámetros del sistema actualizados!');
             cargarTodo();
         } catch (error) {
@@ -1114,7 +1114,7 @@ function Admin() {
                                 <div key={t.usuario_id} style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: abierta ? '1px solid #eee' : '2px solid #dc3545' }}>
                                     <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '12px' }}>
                                         {t.logo_url ? (
-                                            <img src={`http://localhost:3000${t.logo_url}`} alt={t.nombre} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+                                            <img src={`${t.logo_url}`} alt={t.nombre} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
                                         ) : (
                                             <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#e9ecef', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🏪</div>
                                         )}

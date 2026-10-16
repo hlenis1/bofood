@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = '';
 const socket = io(API_URL);
 
 const calcularDistancia = (lat1, lon1, lat2, lon2) => {
