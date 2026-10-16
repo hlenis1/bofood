@@ -23,8 +23,18 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Servir la carpeta pública de imágenes
-app.use('/uploads', express.static(uploadDir));
+// ==========================================
+// 🖼️ SERVIR IMÁGENES SIN CACHÉ RETENIDA EN NAVEGADORES
+// ==========================================
+app.use('/uploads', express.static(uploadDir, {
+    etag: false,
+    maxAge: 0,
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+}));
 
 // ==========================================
 // 🛠️ MOTOR DE PARCHE Y GESTIÓN DE ROLES
@@ -87,7 +97,7 @@ const ejecutarParche = async () => {
     for (let q of queries) { try { await db.query(q); } catch (e) {} }
     try { await db.query("ALTER TABLE recargas CHANGE domiciliario_id usuario_id INT"); } catch (e) {}
 
-  // 🔐 CORRECCIÓN DE ROLES: Mantiene al primer usuario como Admin sin tocar vendedores o domiciliarios
+    // 🔐 CORRECCIÓN DE ROLES: Mantiene al primer usuario como Admin sin tocar vendedores o domiciliarios
     try {
         const [primerUsr] = await db.query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1");
         if (primerUsr.length > 0) {
@@ -211,6 +221,11 @@ app.put('/api/usuarios/:id/cuenta-retiro', async (req, res) => {
 app.put('/api/usuarios/:id/pagar-deuda', async (req, res) => {
     try { 
         await db.query('UPDATE usuarios SET dinero_a_favor = 0 WHERE id = ?', [req.params.id]); 
+
+        // 🚀 NOTIFICAR EN TIEMPO REAL LA LIQUIDACIÓN
+        io.emit('usuario_actualizado', { id: Number(req.params.id) }); 
+        io.emit('catalogo_actualizado'); 
+
         res.json({ success: true }); 
     } catch (e) { res.status(500).send('Error'); }
 });
@@ -617,6 +632,7 @@ app.put('/api/recargas/:id/estado', async (req, res) => {
         res.status(500).send('Error'); 
     }
 });
+
 // ========================================================
 // 🏪 ENDPOINTS DE LA TIENDA Y ESTADO
 // ========================================================
