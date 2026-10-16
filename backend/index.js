@@ -27,10 +27,7 @@ const upload = multer({ storage });
 app.use('/uploads', express.static(uploadDir));
 
 // ==========================================
-// 🛠️ MOTOR DE PARCHE Y LIMPIEZA DE BASE DE DATOS
-// ==========================================
-// ==========================================
-// 🛠️ MOTOR DE PARCHE Y CONVERSIÓN A ADMIN
+// 🛠️ MOTOR DE PARCHE Y GESTIÓN DE ROLES
 // ==========================================
 const ejecutarParche = async () => {
     const queries = [
@@ -81,34 +78,56 @@ const ejecutarParche = async () => {
         )`,
         "ALTER TABLE tiendas ADD COLUMN abierta BOOLEAN DEFAULT 1",
 
-        // 🔄 CONVERTIR TODOS LOS USUARIOS ACTUALES EN ADMINS PARA PERMITIR GUARDAR
-        "UPDATE usuarios SET rol = 'admin'",
-
         // 🔄 CORREGIR RUTA DE IMÁGENES
         "UPDATE usuarios SET banco_imagen = REPLACE(banco_imagen, 'http://localhost:3000', '') WHERE banco_imagen LIKE '%localhost%'",
         "UPDATE bancos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'",
         "UPDATE tiendas SET logo_url = REPLACE(logo_url, 'http://localhost:3000', '') WHERE logo_url LIKE '%localhost%'",
         "UPDATE productos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'"
     ];
-   for (let q of queries) { try { await db.query(q); } catch (e) {} }
+    for (let q of queries) { try { await db.query(q); } catch (e) {} }
+    try { await db.query("ALTER TABLE recargas CHANGE domiciliario_id usuario_id INT"); } catch (e) {}
+
+    // 🔐 CORRECCIÓN DE ROLES: Mantiene únicamente al primer usuario como Admin
+    try {
+        const [primerUsr] = await db.query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1");
+        if (primerUsr.length > 0) {
+            const adminId = primerUsr[0].id;
+            // Fijar el primer usuario como Admin
+            await db.query("UPDATE usuarios SET rol = 'admin' WHERE id = ?", [adminId]);
+            // Restablecer los demás usuarios que quedaron en 'admin' por error de vuelta a 'cliente'
+            await db.query("UPDATE usuarios SET rol = 'cliente' WHERE id != ? AND rol = 'admin'", [adminId]);
+        }
+    } catch (e) {
+        console.error("Error al corregir roles de usuarios:", e);
+    }
+
+    try {
+        const [adm] = await db.query("SELECT id, nombre, direccion, telefono FROM usuarios WHERE rol = 'admin' LIMIT 1");
+        if (adm.length > 0) {
+            const adminId = adm[0].id;
+            const [tAdmin] = await db.query("SELECT usuario_id FROM tiendas WHERE usuario_id = ?", [adminId]);
+            if (tAdmin.length === 0) {
+                await db.query(
+                    "INSERT INTO tiendas (usuario_id, nombre, descripcion, direccion, telefono, abierta) VALUES (?, ?, ?, ?, ?, 1)",
+                    [adminId, "Tienda Principal (Admin)", "Tienda oficial del establecimiento", adm[0].direccion || '', adm[0].telefono || '']
+                );
+            }
+        }
+    } catch (e) {
+        console.error("Error inicializando tienda del admin:", e);
+    }
 };
 
-// 🚀 EJECUTAR PARCHE Y CREAR RUTA HTTP (AGREGAR ESTAS LÍNEAS)
 ejecutarParche();
 
-app.get('/api/arreglar-bd', async (req, res) => {
-    await ejecutarParche();
-    res.json({ success: true, message: "Base de datos parcheada y usuario promovido a admin." });
+app.get('/api/arreglar-bd', async (req, res) => { 
+    await ejecutarParche(); 
+    res.json({ success: true, message: "Base de datos parcheada, roles de usuarios corregidos y URLs de imágenes normalizadas." }); 
 });
 
-// ==========================================
-// 🔐 AUTENTICACIÓN Y USUARIOS
-// ==========================================
-
-
-
-
-
+io.on('connection', (socket) => { 
+    socket.on('ubicacion_domiciliario', (data) => io.emit('ubicacion_domiciliario', data)); 
+});
 
 // ==========================================
 // 🔐 AUTENTICACIÓN Y USUARIOS
@@ -216,17 +235,28 @@ app.put('/api/config-admin', async (req, res) => {
     } catch (e) { res.status(500).send('Error'); }
 });
 
-app.post('/api/config-banco', upload.single('imagen'), async (req, res) => {
+app.post('/api/config-banco', upload.any(), async (req, res) => {
     const { banco_nombre, banco_numero } = req.body;
     try {
-        if (req.file) {
-            const urlImagen = `/uploads/${req.file.filename}`;
-            await db.query("UPDATE usuarios SET banco_nombre = ?, banco_numero = ?, banco_imagen = ? WHERE rol = 'admin'", [banco_nombre, banco_numero, urlImagen]);
+        const archivo = (req.files && req.files.length > 0) ? req.files[0] : null;
+        const urlImagen = archivo ? `/uploads/${archivo.filename}` : null;
+
+        if (urlImagen) {
+            await db.query(
+                "UPDATE usuarios SET banco_nombre = ?, banco_numero = ?, banco_imagen = ? WHERE rol = 'admin'",
+                [banco_nombre || '', banco_numero || '', urlImagen]
+            );
         } else {
-            await db.query("UPDATE usuarios SET banco_nombre = ?, banco_numero = ? WHERE rol = 'admin'", [banco_nombre, banco_numero]);
+            await db.query(
+                "UPDATE usuarios SET banco_nombre = ?, banco_numero = ? WHERE rol = 'admin'",
+                [banco_nombre || '', banco_numero || '']
+            );
         }
-        res.json({ success: true });
-    } catch (e) { res.status(500).send('Error'); }
+        res.json({ success: true, message: "Cuenta principal guardada correctamente" });
+    } catch (e) {
+        console.error("Error al guardar cuenta principal de banco:", e);
+        res.status(500).json({ error: 'Error al guardar la cuenta bancaria', detalle: e.message });
+    }
 });
 
 app.delete('/api/config-banco', async (req, res) => {
@@ -238,8 +268,8 @@ app.get('/api/bancos', async (req, res) => { try { const [b] = await db.query('S
 app.post('/api/bancos', upload.single('imagen'), async (req, res) => {
     try {
         const urlImagen = req.file ? `/uploads/${req.file.filename}` : '';
-        await db.query('INSERT INTO bancos (nombre, numero, imagen) VALUES (?, ?, ?)', [req.body.nombre, req.body.numero, urlImagen]);
-        res.json({ success: true });
+        await db.query('INSERT INTO bancos (nombre, numero, imagen) VALUES (?, ?, ?)', [req.body.nombre || '', req.body.numero || '', urlImagen]);
+        res.json({ success: true, message: "Banco agregado correctamente" });
     } catch (e) { res.status(500).send('Error'); }
 });
 
