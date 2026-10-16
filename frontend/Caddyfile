@@ -1,7 +1,4 @@
 :{$PORT:3000} {
-    log {
-        format json
-    }
 
     # Coincidencia explícita para todas las peticiones a /api
     @api path /api/*
@@ -9,9 +6,9 @@
         reverse_proxy chatpan_bofood:3000
     }
 
-    # Manejador por defecto para servir la aplicación React
+    # Manejador por defecto para servir la aplicación React compilada
     handle {
-        root * ../app/{$NIXPACKS_SPA_OUTPUT_DIR}
+        root * dist
         encode gzip
         file_server
         try_files {path} /index.html
