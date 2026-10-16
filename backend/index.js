@@ -88,21 +88,25 @@ const ejecutarParche = async () => {
         )`,
         "ALTER TABLE tiendas ADD COLUMN abierta BOOLEAN DEFAULT 1",
 
-        // 🔄 CORREGIR RUTA DE IMÁGENES
+        // 🔄 CORREGIR RUTAS Y PREFIJOS DE IMÁGENES EN BD
         "UPDATE usuarios SET banco_imagen = REPLACE(banco_imagen, 'http://localhost:3000', '') WHERE banco_imagen LIKE '%localhost%'",
         "UPDATE bancos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'",
         "UPDATE tiendas SET logo_url = REPLACE(logo_url, 'http://localhost:3000', '') WHERE logo_url LIKE '%localhost%'",
-        "UPDATE productos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'"
+        "UPDATE productos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'",
+
+        // 🔧 ANEXAR /uploads/ A REGISTROS HUÉRFANOS DE IMÁGENES
+        "UPDATE tiendas SET logo_url = CONCAT('/uploads/', logo_url) WHERE logo_url IS NOT NULL AND logo_url != '' AND logo_url NOT LIKE '/uploads/%' AND logo_url NOT LIKE 'http%'",
+        "UPDATE productos SET imagen = CONCAT('/uploads/', imagen) WHERE imagen IS NOT NULL AND imagen != '' AND imagen NOT LIKE '/uploads/%' AND imagen NOT LIKE 'http%'",
+        "UPDATE bancos SET imagen = CONCAT('/uploads/', imagen) WHERE imagen IS NOT NULL AND imagen != '' AND imagen NOT LIKE '/uploads/%' AND imagen NOT LIKE 'http%'"
     ];
     for (let q of queries) { try { await db.query(q); } catch (e) {} }
     try { await db.query("ALTER TABLE recargas CHANGE domiciliario_id usuario_id INT"); } catch (e) {}
 
-    // 🔐 CORRECCIÓN DE ROLES: Mantiene al primer usuario como Admin sin tocar vendedores o domiciliarios
+    // 🔐 CORRECCIÓN DE ROLES: Mantiene al primer usuario como Admin
     try {
         const [primerUsr] = await db.query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1");
         if (primerUsr.length > 0) {
             const adminId = primerUsr[0].id;
-            // Solo asegura que el usuario principal sea admin
             await db.query("UPDATE usuarios SET rol = 'admin' WHERE id = ?", [adminId]);
         }
     } catch (e) {
@@ -130,7 +134,7 @@ ejecutarParche();
 
 app.get('/api/arreglar-bd', async (req, res) => { 
     await ejecutarParche(); 
-    res.json({ success: true, message: "Base de datos parcheada, roles de usuarios corregidos y URLs de imágenes normalizadas." }); 
+    res.json({ success: true, message: "Base de datos parcheada, roles corregidos y rutas de imágenes corregidas con /uploads/." }); 
 });
 
 io.on('connection', (socket) => { 
@@ -221,11 +225,8 @@ app.put('/api/usuarios/:id/cuenta-retiro', async (req, res) => {
 app.put('/api/usuarios/:id/pagar-deuda', async (req, res) => {
     try { 
         await db.query('UPDATE usuarios SET dinero_a_favor = 0 WHERE id = ?', [req.params.id]); 
-
-        // 🚀 NOTIFICAR EN TIEMPO REAL LA LIQUIDACIÓN
         io.emit('usuario_actualizado', { id: Number(req.params.id) }); 
         io.emit('catalogo_actualizado'); 
-
         res.json({ success: true }); 
     } catch (e) { res.status(500).send('Error'); }
 });
@@ -602,11 +603,8 @@ app.post('/api/recargas', async (req, res) => {
     const uid = req.body.usuario_id || req.body.domiciliario_id;
     try { 
         const [r] = await db.query('INSERT INTO recargas (usuario_id, monto, referencia, banco_destino) VALUES (?, ?, ?, ?)', [uid, req.body.monto, req.body.referencia, req.body.banco_destino || '']); 
-
-        // 🚀 SOCKET: Avisa al Admin al instante de una nueva recarga
         io.emit('nueva_recarga', { id: r.insertId, usuario_id: uid, monto: req.body.monto });
         io.emit('catalogo_actualizado');
-
         res.json({ success: true }); 
     } catch (e) { res.status(500).send('Error'); } 
 });
@@ -619,7 +617,6 @@ app.put('/api/recargas/:id/estado', async (req, res) => {
         }
         await db.query('UPDATE recargas SET estado = ? WHERE id = ?', [req.body.estado, req.params.id]);
 
-        // 🚀 SOCKET: Avisa a la Tienda o Domiciliario que su saldo/recarga cambió en tiempo real
         if (r.length > 0) {
             io.emit('recarga_actualizada', { id: Number(req.params.id), usuario_id: r[0].usuario_id, estado: req.body.estado });
             io.emit('usuario_actualizado', { id: r[0].usuario_id });
