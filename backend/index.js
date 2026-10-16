@@ -87,18 +87,16 @@ const ejecutarParche = async () => {
     for (let q of queries) { try { await db.query(q); } catch (e) {} }
     try { await db.query("ALTER TABLE recargas CHANGE domiciliario_id usuario_id INT"); } catch (e) {}
 
-    // 🔐 CORRECCIÓN DE ROLES: Mantiene únicamente al primer usuario como Admin
+  // 🔐 CORRECCIÓN DE ROLES: Mantiene al primer usuario como Admin sin tocar vendedores o domiciliarios
     try {
         const [primerUsr] = await db.query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1");
         if (primerUsr.length > 0) {
             const adminId = primerUsr[0].id;
-            // Fijar el primer usuario como Admin
+            // Solo asegura que el usuario principal sea admin
             await db.query("UPDATE usuarios SET rol = 'admin' WHERE id = ?", [adminId]);
-            // Restablecer los demás usuarios que quedaron en 'admin' por error de vuelta a 'cliente'
-            await db.query("UPDATE usuarios SET rol = 'cliente' WHERE id != ? AND rol = 'admin'", [adminId]);
         }
     } catch (e) {
-        console.error("Error al corregir roles de usuarios:", e);
+        console.error("Error al asegurar admin principal:", e);
     }
 
     try {
