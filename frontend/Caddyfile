@@ -1,7 +1,7 @@
 :{$PORT:3000} {
 
-    # Mantiene el prefijo /api/ y reenvía las peticiones a Express
-    @api path /api/*
+    # Redirige peticiones de API, WebSockets y las imágenes subidas al backend
+    @api path /api/* /socket.io/* /uploads/*
     handle @api {
         reverse_proxy chatpan_bofood:3000
     }
