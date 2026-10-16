@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { BotonModoOscuro } from './BotonModoOscuro';
 
 const socket = io('');
 
@@ -60,8 +61,8 @@ function Domiciliario() {
     const cargarMisDatos = async (id) => {
         try {
             const res = await axios.get('/api/usuarios');
-            const yo = res.data.find(u => u.id === id);
-            if (yo) setMiSaldo(Number(yo.saldo));
+            const yo = res.data.find(u => Number(u.id) === Number(id));
+            if (yo) setMiSaldo(Number(yo.saldo || 0));
             
             const resBancos = await axios.get('/api/bancos');
             setBancos(resBancos.data);
@@ -74,7 +75,7 @@ function Domiciliario() {
     const cargarRecargas = async () => {
         try {
             const res = await axios.get('/api/recargas');
-            setRecargas(res.data.filter(r => r.usuario_id === usuarioInfo?.id));
+            setRecargas(res.data.filter(r => Number(r.usuario_id) === Number(usuarioInfo?.id)));
         } catch (error) { console.error(error); }
     };
 
@@ -107,7 +108,6 @@ function Domiciliario() {
 
         cargarPedidos();
 
-        // 🚀 OYENTES DE SOCKET EN TIEMPO REAL PARA EL DOMICILIARIO
         socket.on('nuevo_pedido', cargarPedidos);
         socket.on('estado_actualizado', (data) => {
             cargarPedidos();
@@ -131,7 +131,7 @@ function Domiciliario() {
 
     useEffect(() => {
         if (!Array.isArray(pedidos)) return;
-        const enCamino = pedidos.filter(p => p.estado === 'llevando_tu_pedido' && p.domiciliario_id === usuarioInfo?.id).map(p => p.id);
+        const enCamino = pedidos.filter(p => p.estado === 'llevando_tu_pedido' && Number(p.domiciliario_id) === Number(usuarioInfo?.id)).map(p => p.id);
         pedidosEnCaminoRef.current = enCamino;
 
         if (enCamino.length > 0 && !watchIdRef.current) iniciarTransmisionGPS();
@@ -201,15 +201,18 @@ function Domiciliario() {
     if (errorFatal) return (<div style={{ padding: '40px', textAlign: 'center' }}><h2>⚠️ ERROR</h2><p>{errorFatal}</p><button onClick={cerrarSesion}>Volver</button></div>);
     if (!usuarioInfo) return <div style={{ textAlign: 'center', padding: '50px' }}>Cargando... ⏳</div>;
 
-    const pedidosActivos = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'listo_para_entrega' || (p.estado === 'llevando_tu_pedido' && p.domiciliario_id === usuarioInfo.id)) : [];
-    const historialEntregas = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'entregado' && p.domiciliario_id === usuarioInfo.id) : [];
+    const pedidosActivos = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'listo_para_entrega' || (p.estado === 'llevando_tu_pedido' && Number(p.domiciliario_id) === Number(usuarioInfo.id))) : [];
+    const historialEntregas = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'entregado' && Number(p.domiciliario_id) === Number(usuarioInfo.id)) : [];
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', minHeight: '100vh' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', backgroundColor: '#343a40', padding: '15px', borderRadius: '8px', color: 'white' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: '#e83e8c' }}>🛵 Repartidor</h2>
-                    <button onClick={cerrarSesion} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <BotonModoOscuro />
+                        <button onClick={cerrarSesion} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
+                    </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#212529', padding: '10px', borderRadius: '6px' }}>
                     <span style={{ fontSize: '16px' }}>Mi Billetera / Saldo:</span>
@@ -224,9 +227,9 @@ function Domiciliario() {
 
             {vistaActiva === 'billetera' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                         <h3 style={{ marginTop: 0, color: '#28a745' }}>Recargar Saldo</h3>
-                        <p style={{ fontSize: '14px', color: '#555' }}>Transfiere a alguna de estas cuentas y reporta tu comprobante.</p>
+                        <p style={{ fontSize: '14px' }}>Transfiere a alguna de estas cuentas y reporta tu comprobante.</p>
                         
                         {bancos.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
@@ -258,7 +261,7 @@ function Domiciliario() {
                         </form>
                     </div>
 
-                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                         <h3 style={{ marginTop: 0 }}>Mis Recargas Recientes</h3>
                         {recargas.length === 0 ? <p style={{ fontSize: '14px', color: '#666' }}>No tienes historial de recargas.</p> : (
                             recargas.slice(0, 5).map(r => (
@@ -271,7 +274,7 @@ function Domiciliario() {
                         )}
                     </div>
 
-                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                         <h3 style={{ marginTop: 0, color: '#007bff' }}>Historial de Ganancias (Entregados)</h3>
                         {historialEntregas.length === 0 ? <p style={{ fontSize: '14px', color: '#666' }}>Aún no has entregado pedidos.</p> : (
                             historialEntregas.slice(0, 10).map(p => {
@@ -313,15 +316,15 @@ function Domiciliario() {
                         const estaExpandido = !!pedidosExpandidos[pedido.id];
 
                         return (
-                        <div key={pedido.id} style={{ border: esMiViaje ? '2px solid #007bff' : '1px solid #ddd', borderRadius: '8px', backgroundColor: 'white', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                        <div key={pedido.id} style={{ border: esMiViaje ? '2px solid #007bff' : '1px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
                             <div 
                                 onClick={() => togglePedido(pedido.id)} 
-                                style={{ padding: '15px', backgroundColor: esMiViaje ? '#f0f7ff' : '#ffffff', cursor: 'pointer', borderBottom: estaExpandido ? '1px solid #eee' : 'none', userSelect: 'none' }}
+                                style={{ padding: '15px', cursor: 'pointer', borderBottom: estaExpandido ? '1px solid #eee' : 'none', userSelect: 'none' }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div>
                                         <h3 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>Pedido #{pedido.id}</h3>
-                                        <p style={{ margin: '2px 0', color: '#555', fontSize: '14px' }}>
+                                        <p style={{ margin: '2px 0', fontSize: '14px' }}>
                                             Cobrar: <strong style={{ color: '#28a745', fontSize: '15px' }}>${Number(pedido.total || 0).toLocaleString()}</strong> ({pedido.metodo_pago ? pedido.metodo_pago.toUpperCase() : 'N/A'})
                                         </p>
                                         <p style={{ margin: '2px 0', color: '#17a2b8', fontSize: '13px', fontWeight: 'bold' }}>
@@ -333,7 +336,7 @@ function Domiciliario() {
                                     </span>
                                 </div>
 
-                                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', color: '#333' }}>
+                                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
                                     <span>🏬 <strong>{pedido.tienda_nombre || 'Tienda'}</strong></span>
                                     <span style={{ color: '#888' }}>➔</span>
                                     <span>🏠 <strong>{pedido.cliente || 'Cliente'}</strong></span>
@@ -345,10 +348,10 @@ function Domiciliario() {
                             </div>
 
                             {estaExpandido && (
-                                <div style={{ padding: '15px', backgroundColor: '#fafafa', borderTop: '1px solid #eee' }}>
+                                <div style={{ padding: '15px', borderTop: '1px solid #eee' }}>
                                     
-                                    <div style={{ border: '1px solid #e9ecef', padding: '10px', borderRadius: '6px', marginBottom: '15px', backgroundColor: 'white' }}>
-                                        <strong style={{ fontSize: '14px', color: '#333', display: 'block', marginBottom: '8px' }}>
+                                    <div style={{ border: '1px solid #e9ecef', padding: '10px', borderRadius: '6px', marginBottom: '15px' }}>
+                                        <strong style={{ fontSize: '14px', display: 'block', marginBottom: '8px' }}>
                                             🛒 Productos ({detallesCarrito.reduce((acc, p) => acc + Number(p.cantidad || 1), 0)} ítems):
                                         </strong>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -361,17 +364,17 @@ function Domiciliario() {
                                         </div>
                                     </div>
 
-                                    <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffeeba', padding: '12px', borderRadius: '6px', marginBottom: '15px' }}>
-                                        <strong style={{ color: '#856404', display: 'block', marginBottom: '5px', fontSize: '14px' }}>
+                                    <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffeeba', padding: '12px', borderRadius: '6px', marginBottom: '15px', color: '#856404' }}>
+                                        <strong style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
                                             🏬 1. Punto de Recogida (Tienda):
                                         </strong>
-                                        <p style={{ margin: '2px 0', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+                                        <p style={{ margin: '2px 0', fontSize: '14px', fontWeight: 'bold' }}>
                                             {pedido.tienda_nombre || 'Tienda / Vendedor Principal'}
                                         </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px', color: '#555' }}>
+                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
                                             📞 Teléfono Tienda: {pedido.tienda_telefono || 'Sin teléfono'}
                                         </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px', color: '#333' }}>
+                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
                                             📍 Dirección Tienda: {dirTienda.texto}
                                         </p>
 
@@ -400,17 +403,17 @@ function Domiciliario() {
                                         )}
                                     </div>
 
-                                    <div style={{ backgroundColor: '#e9ecef', border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', marginBottom: '15px' }}>
-                                        <strong style={{ color: '#0c5460', display: 'block', marginBottom: '5px', fontSize: '14px' }}>
+                                    <div style={{ backgroundColor: '#e9ecef', border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', marginBottom: '15px', color: '#0c5460' }}>
+                                        <strong style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
                                             🏠 2. Punto de Entrega (Cliente):
                                         </strong>
-                                        <p style={{ margin: '2px 0', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>
+                                        <p style={{ margin: '2px 0', fontSize: '14px', fontWeight: 'bold' }}>
                                             {pedido.cliente || 'Cliente Desconocido'}
                                         </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px', color: '#555' }}>
+                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
                                             📞 Teléfono Cliente: {pedido.telefono || 'Sin teléfono'}
                                         </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px', color: '#333' }}>
+                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
                                             📍 Dirección Cliente: {dirCliente.texto}
                                         </p>
 

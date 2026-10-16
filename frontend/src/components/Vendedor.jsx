@@ -4,6 +4,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { ConfigurarTienda } from './ConfigurarTienda';
 import { VendedorAprobarPago } from './VendedorAprobarPago';
+import { BotonModoOscuro } from './BotonModoOscuro';
 
 const socket = io('');
 const obtenerDetalles = (d) => { try { return JSON.parse(d); } catch (e) { return []; } };
@@ -15,13 +16,11 @@ function Vendedor() {
     const [vistaActiva, setVistaActiva] = useState('ventas');
     const navigate = useNavigate();
 
-    // DATOS DE LA TIENDA DEL VENDEDOR
     const [datosTienda, setDatosTienda] = useState(null);
 
-    // FINANZAS SEPARADAS
-    const [miSaldo, setMiSaldo] = useState(0);             // Para pagar comisiones
-    const [dineroAFavor, setDineroAFavor] = useState(0);   // Lo que le debe el Admin
-    const [cuentaRetiro, setCuentaRetiro] = useState('');  // Dónde le van a pagar
+    const [miSaldo, setMiSaldo] = useState(0);             
+    const [dineroAFavor, setDineroAFavor] = useState(0);   
+    const [cuentaRetiro, setCuentaRetiro] = useState('');  
 
     const [nuevoNombre, setNuevoNombre] = useState('');
     const [nuevoPrecio, setNuevoPrecio] = useState('');
@@ -34,7 +33,6 @@ function Vendedor() {
 
     const audioNuevoPedido = new Audio('https://actions.google.com/sounds/v1/alarms/doorbell.ogg');
 
-    // 🔄 Cargar datos de la tienda y finanzas asegurando conversión numérica de IDs
     const cargarDatos = (id) => {
         if (!id) return;
 
@@ -73,7 +71,6 @@ function Vendedor() {
             .catch(console.error);
     };
 
-    // 🔐 1. Validar sesión de usuario
     useEffect(() => {
         const infoStr = localStorage.getItem('usuario');
         if (!infoStr) return navigate('/login');
@@ -89,7 +86,6 @@ function Vendedor() {
         }
     }, [navigate]);
 
-    // 🚀 2. Escuchar WebSockets en tiempo real cuando el usuario está cargado
     useEffect(() => {
         if (!usuarioInfo) return;
 
@@ -210,7 +206,7 @@ function Vendedor() {
     const estaTiendaAbierta = datosTienda?.abierta !== 0;
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', backgroundColor: '#f4f4f9', minHeight: '100vh' }}>
+        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', minHeight: '100vh' }}>
             
             {/* INTERRUPTOR PRINCIPAL: TIENDA ABIERTA / CERRADA */}
             <div style={{ 
@@ -269,7 +265,11 @@ function Vendedor() {
                             {datosTienda?.descripcion && <span style={{ fontSize: '12px', opacity: 0.85 }}>{datosTienda.descripcion}</span>}
                         </div>
                     </div>
-                    <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <BotonModoOscuro />
+                        <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
+                    </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px', marginBottom: '5px' }}>
                     <span style={{ fontSize: '14px' }}>Dinero a tu favor (Por Cobrar al Admin):</span>
@@ -294,23 +294,23 @@ function Vendedor() {
             {/* PESTAÑA: MIS VENTAS */}
             {vistaActiva === 'ventas' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <h3 style={{ margin: 0, color: '#333' }}>Pedidos Activos</h3>
+                    <h3 style={{ margin: 0 }}>Pedidos Activos</h3>
                     {ventasActivas.length === 0 ? <p style={{ color: '#666' }}>No hay pedidos pendientes por despachar.</p> : (
                         ventasActivas.map(pedido => {
                             const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
                             return (
-                                <div key={pedido.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                <div key={pedido.id} style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
                                         <div>
                                             <strong style={{ fontSize: '18px', color: '#6f42c1' }}>Pedido #{pedido.id}</strong><br/>
                                             <span style={{ fontSize: '13px', color: '#666' }}>{new Date(pedido.fecha_creacion).toLocaleString()}</span>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <span style={{ display: 'block', fontWeight: 'bold', color: '#333' }}>Cliente: {pedido.cliente}</span>
+                                            <span style={{ display: 'block', fontWeight: 'bold' }}>Cliente: {pedido.cliente}</span>
                                             <span style={{ fontSize: '12px', color: '#007bff', fontWeight: 'bold' }}>{pedido.estado.replace('_', ' ').toUpperCase()}</span>
                                         </div>
                                     </div>
-                                    <div style={{ marginBottom: '15px', backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '6px' }}>
+                                    <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '6px', border: '1px solid #eee' }}>
                                         <strong style={{ display: 'block', marginBottom: '8px' }}>Productos a preparar:</strong>
                                         {misItems.map((item, i) => (
                                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
@@ -344,7 +344,7 @@ function Vendedor() {
                         </form>
                     </div>
 
-                    <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                         <h3 style={{ marginTop: 0, color: '#007bff' }}>💳 Recargar Saldo Prepago (Para pagar comisiones)</h3>
                         {bancos.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
@@ -376,12 +376,12 @@ function Vendedor() {
 
             {/* PESTAÑA: SUBIR NUEVO */}
             {vistaActiva === 'subir' && (
-                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                     <h3 style={{ marginTop: 0 }}>Tomar Foto y Vender 📸</h3>
                     <form onSubmit={subirProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <input type="text" placeholder="Nombre del producto" value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
                         <input type="number" placeholder="Precio de venta al público" value={nuevoPrecio} onChange={e => setNuevoPrecio(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        <div style={{ backgroundColor: '#e9ecef', padding: '15px', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ padding: '15px', borderRadius: '6px', textAlign: 'center', border: '1px dashed #ccc' }}>
                             <strong style={{ display: 'block', marginBottom: '10px' }}>Subir Foto desde Galería o Cámara</strong>
                             <input type="file" accept="image/*" capture="environment" onChange={e => setArchivoFoto(e.target.files[0])} style={{ width: '100%' }} />
                         </div>
@@ -392,15 +392,15 @@ function Vendedor() {
 
             {/* PESTAÑA: MIS PRODUCTOS */}
             {vistaActiva === 'productos' && (
-                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                     <h3 style={{ marginTop: 0 }}>Mis Productos Activos</h3>
                     {misProductos.length === 0 ? <p>Aún no has publicado nada.</p> : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                             {misProductos.map(p => (
-                                <div key={p.id} style={{ border: '1px solid #eee', padding: '10px', borderRadius: '6px', display: 'flex', itemsAlign: 'center', gap: '15px' }}>
+                                <div key={p.id} style={{ border: '1px solid #eee', padding: '10px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '15px' }}>
                                     <img src={p.imagen} alt={p.nombre} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', opacity: p.disponible ? 1 : 0.4 }} />
                                     <div style={{ flex: 1 }}>
-                                        <strong style={{ display: 'block', color: p.disponible ? '#333' : '#999' }}>{p.nombre}</strong>
+                                        <strong style={{ display: 'block', color: p.disponible ? 'inherit' : '#999' }}>{p.nombre}</strong>
                                         <span style={{ color: p.disponible ? '#28a745' : '#999', fontWeight: 'bold' }}>${Number(p.precio).toLocaleString()}</span>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -416,14 +416,14 @@ function Vendedor() {
 
             {/* PESTAÑA: CONFIGURACIÓN DE LA TIENDA */}
             {vistaActiva === 'tienda' && (
-                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                     <ConfigurarTienda usuarioId={usuarioInfo.id} />
                 </div>
             )}
 
             {/* PESTAÑA: VALIDACIÓN Y APROBACIÓN DE PAGOS */}
             {vistaActiva === 'validar_pagos' && (
-                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                     <VendedorAprobarPago />
                 </div>
             )}

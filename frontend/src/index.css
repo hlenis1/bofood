@@ -109,3 +109,62 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+/* 🌙 MODO OSCURO GLOBAL */
+body.dark-theme {
+  background-color: #121212 !important;
+  color: #e0e0e0 !important;
+}
+
+body.dark-theme div,
+body.dark-theme nav,
+body.dark-theme header {
+  border-color: #333 !important;
+}
+
+/* 🔘 ESTILO DEL BOTÓN CORREDIZO (SWITCH) */
+.switch-tema {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.switch-tema input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-modo {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 34px;
+}
+
+.slider-modo:before {
+  position: absolute;
+  content: "☀️";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+input:checked + .slider-modo {
+  background-color: #6f42c1;
+}
+
+input:checked + .slider-modo:before {
+  transform: translateX(24px);
+  content: "🌙";
+}
