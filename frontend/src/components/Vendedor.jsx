@@ -34,39 +34,76 @@ function Vendedor() {
 
     const audioNuevoPedido = new Audio('https://actions.google.com/sounds/v1/alarms/doorbell.ogg');
 
+    // 🔄 Cargar datos de la tienda y finanzas asegurando conversión numérica de IDs
     const cargarDatos = (id) => {
-        axios.get('/api/productos').then(res => setMisProductos(res.data.filter(p => p.vendedor_id === id))).catch(console.error);
+        if (!id) return;
+
+        axios.get('/api/productos')
+            .then(res => setMisProductos(res.data.filter(p => Number(p.vendedor_id) === Number(id))))
+            .catch(console.error);
             
-        axios.get('/api/usuarios').then(res => {
-            const yo = res.data.find(u => u.id === id);
-            if (yo) {
-                setMiSaldo(Number(yo.saldo));
-                setDineroAFavor(Number(yo.dinero_a_favor || 0));
-                setCuentaRetiro(yo.cuenta_retiro || '');
-            }
-        }).catch(console.error);
+        axios.get('/api/usuarios')
+            .then(res => {
+                const yo = res.data.find(u => Number(u.id) === Number(id));
+                if (yo) {
+                    setMiSaldo(Number(yo.saldo || 0));
+                    setDineroAFavor(Number(yo.dinero_a_favor || 0));
+                    setCuentaRetiro(yo.cuenta_retiro || '');
+                }
+            })
+            .catch(console.error);
 
         axios.get(`/api/vendedor/tienda/${id}`)
             .then(res => setDatosTienda(res.data))
             .catch(console.error);
 
-        axios.get('/api/recargas').then(res => setRecargas(res.data.filter(r => r.usuario_id === id))).catch(console.error);
-        axios.get('/api/bancos').then(res => { setBancos(res.data); if(res.data.length > 0) setFormRecarga(prev => ({...prev, banco_destino: res.data[0].nombre})); }).catch(console.error);
-        axios.get('/api/pedidos').then(res => setPedidos(res.data)).catch(console.error);
+        axios.get('/api/recargas')
+            .then(res => setRecargas(res.data.filter(r => Number(r.usuario_id) === Number(id))))
+            .catch(console.error);
+
+        axios.get('/api/bancos')
+            .then(res => { 
+                setBancos(res.data); 
+                if (res.data.length > 0) setFormRecarga(prev => ({...prev, banco_destino: res.data[0].nombre})); 
+            })
+            .catch(console.error);
+
+        axios.get('/api/pedidos')
+            .then(res => setPedidos(res.data))
+            .catch(console.error);
     };
 
+    // 🔐 1. Validar sesión de usuario
     useEffect(() => {
         const infoStr = localStorage.getItem('usuario');
         if (!infoStr) return navigate('/login');
-        const info = JSON.parse(infoStr);
-        if (info.rol !== 'vendedor') { alert('Acceso denegado.'); return navigate('/login'); }
-        
-        setUsuarioInfo(info);
-        cargarDatos(info.id);
+        try {
+            const info = JSON.parse(infoStr);
+            if (String(info.rol).trim().toLowerCase() !== 'vendedor') { 
+                alert('Acceso denegado.'); 
+                return navigate('/login'); 
+            }
+            setUsuarioInfo(info);
+        } catch (e) {
+            navigate('/login');
+        }
+    }, [navigate]);
 
-        // 🚀 OYENTES DE SOCKET EN TIEMPO REAL
-        const manejarNuevoPedido = () => { cargarDatos(info.id); audioNuevoPedido.play().catch(e=>console.log(e)); };
-        const manejarActualizaciones = () => cargarDatos(info.id);
+    // 🚀 2. Escuchar WebSockets en tiempo real cuando el usuario está cargado
+    useEffect(() => {
+        if (!usuarioInfo) return;
+
+        const id = usuarioInfo.id;
+        cargarDatos(id);
+
+        const manejarNuevoPedido = () => { 
+            cargarDatos(id); 
+            audioNuevoPedido.play().catch(e => console.log(e)); 
+        };
+
+        const manejarActualizaciones = () => {
+            cargarDatos(id);
+        };
 
         socket.on('nuevo_pedido', manejarNuevoPedido);
         socket.on('estado_actualizado', manejarActualizaciones);
@@ -81,7 +118,7 @@ function Vendedor() {
             socket.off('usuario_actualizado', manejarActualizaciones);
             socket.off('catalogo_actualizado', manejarActualizaciones);
         };
-    }, [navigate]);
+    }, [usuarioInfo]);
 
     const toggleEstadoTienda = async () => {
         const estadoActual = datosTienda?.abierta !== undefined ? (datosTienda.abierta ? 1 : 0) : 1;
@@ -96,7 +133,12 @@ function Vendedor() {
     };
 
     const cambiarEstadoPedido = async (id, nuevoEstado) => {
-        try { await axios.put(`/api/pedidos/${id}/estado`, { estado: nuevoEstado }); cargarDatos(usuarioInfo.id); } catch (error) { alert('Error al actualizar'); }
+        try { 
+            await axios.put(`/api/pedidos/${id}/estado`, { estado: nuevoEstado }); 
+            cargarDatos(usuarioInfo.id); 
+        } catch (error) { 
+            alert('Error al actualizar'); 
+        }
     };
 
     const subirProducto = async (e) => {
@@ -104,22 +146,40 @@ function Vendedor() {
         if (miSaldo <= 0) return alert("❌ Tu saldo prepago está en $0. No puedes subir productos. Recarga tu billetera primero.");
 
         const formData = new FormData();
-        formData.append('nombre', nuevoNombre); formData.append('precio', nuevoPrecio); formData.append('categoria', nuevaCategoria); formData.append('vendedor_id', usuarioInfo.id);
+        formData.append('nombre', nuevoNombre); 
+        formData.append('precio', nuevoPrecio); 
+        formData.append('categoria', nuevaCategoria); 
+        formData.append('vendedor_id', usuarioInfo.id);
         if (archivoFoto) formData.append('imagen', archivoFoto);
 
         try {
             await axios.post('/api/productos', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
             alert('¡Producto subido a la tienda con éxito!');
-            setNuevoNombre(''); setNuevoPrecio(''); setArchivoFoto(null); cargarDatos(usuarioInfo.id);
-        } catch (error) { alert('Error al subir'); }
+            setNuevoNombre(''); 
+            setNuevoPrecio(''); 
+            setArchivoFoto(null); 
+            cargarDatos(usuarioInfo.id);
+        } catch (error) { 
+            alert('Error al subir'); 
+        }
     };
 
     const toggleDisp = async (id, estadoActual) => {
         if (!estadoActual && miSaldo <= 0) return alert("❌ No puedes activar productos porque tu saldo está en $0. Por favor, recarga tu billetera.");
-        try { await axios.put(`/api/productos/${id}/disponibilidad`, { disponible: !estadoActual }); cargarDatos(usuarioInfo.id); } catch (error) { alert('Error'); }
+        try { 
+            await axios.put(`/api/productos/${id}/disponibilidad`, { disponible: !estadoActual }); 
+            cargarDatos(usuarioInfo.id); 
+        } catch (error) { 
+            alert('Error'); 
+        }
     };
 
-    const eliminar = async (id) => { if(window.confirm("¿Borrar este producto?")) { await axios.delete(`/api/productos/${id}`); cargarDatos(usuarioInfo.id); } };
+    const eliminar = async (id) => { 
+        if (window.confirm("¿Borrar este producto?")) { 
+            await axios.delete(`/api/productos/${id}`); 
+            cargarDatos(usuarioInfo.id); 
+        } 
+    };
 
     const solicitarRecarga = async (e) => {
         e.preventDefault();
@@ -128,7 +188,9 @@ function Vendedor() {
             alert("Solicitud enviada. Espera a que el Admin la apruebe.");
             setFormRecarga({ monto: '', referencia: '', banco_destino: bancos[0]?.nombre || '' });
             cargarDatos(usuarioInfo.id);
-        } catch (error) { alert("Error al solicitar recarga"); }
+        } catch (error) { 
+            alert("Error al solicitar recarga"); 
+        }
     };
 
     const guardarCuentaRetiro = async (e) => {
@@ -136,12 +198,14 @@ function Vendedor() {
         try {
             await axios.put(`/api/usuarios/${usuarioInfo.id}/cuenta-retiro`, { cuenta_retiro: cuentaRetiro });
             alert("Cuenta de cobro actualizada exitosamente. El administrador la verá al pagarte.");
-        } catch(error) { alert("Error al guardar cuenta"); }
+        } catch (error) { 
+            alert("Error al guardar cuenta"); 
+        }
     };
 
-    if (!usuarioInfo) return <p style={{textAlign: 'center', padding: '50px'}}>Cargando panel de ventas...</p>;
+    if (!usuarioInfo) return <p style={{textAlign: 'center', padding: '50px'}}>Cargando panel de ventas... ⏳</p>;
 
-    const misVentas = pedidos.filter(pedido => obtenerDetalles(pedido.detalles).some(d => d.vendedor_id === usuarioInfo.id));
+    const misVentas = pedidos.filter(pedido => obtenerDetalles(pedido.detalles).some(d => Number(d.vendedor_id) === Number(usuarioInfo.id)));
     const ventasActivas = misVentas.filter(p => !['entregado', 'cancelado', 'cancelado_devuelto'].includes(p.estado));
     const estaTiendaAbierta = datosTienda?.abierta !== 0;
 
@@ -233,7 +297,7 @@ function Vendedor() {
                     <h3 style={{ margin: 0, color: '#333' }}>Pedidos Activos</h3>
                     {ventasActivas.length === 0 ? <p style={{ color: '#666' }}>No hay pedidos pendientes por despachar.</p> : (
                         ventasActivas.map(pedido => {
-                            const misItems = obtenerDetalles(pedido.detalles).filter(d => d.vendedor_id === usuarioInfo.id);
+                            const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
                             return (
                                 <div key={pedido.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
@@ -333,7 +397,7 @@ function Vendedor() {
                     {misProductos.length === 0 ? <p>Aún no has publicado nada.</p> : (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                             {misProductos.map(p => (
-                                <div key={p.id} style={{ border: '1px solid #eee', padding: '10px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div key={p.id} style={{ border: '1px solid #eee', padding: '10px', borderRadius: '6px', display: 'flex', itemsAlign: 'center', gap: '15px' }}>
                                     <img src={p.imagen} alt={p.nombre} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', opacity: p.disponible ? 1 : 0.4 }} />
                                     <div style={{ flex: 1 }}>
                                         <strong style={{ display: 'block', color: p.disponible ? '#333' : '#999' }}>{p.nombre}</strong>
