@@ -1,11 +1,12 @@
 :{$PORT:3000} {
 
-    # Elimina la palabra /api antes de enviar la petición a Node.js
-    handle_path /api/* {
+    # Mantiene el prefijo /api/ y reenvía las peticiones a Express
+    @api path /api/*
+    handle @api {
         reverse_proxy chatpan_bofood:3000
     }
 
-    # Manejador para servir la aplicación React
+    # Sirve la aplicación React compilada
     handle {
         root * dist
         encode gzip
