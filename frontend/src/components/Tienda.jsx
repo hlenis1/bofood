@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { BotonModoOscuro } from './BotonModoOscuro';
 
 const API_URL = '';
 const socket = io(API_URL);
@@ -259,10 +260,16 @@ function Tienda() {
         : [];
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', minHeight: '100vh' }}>
+            
+            {/* ENCABEZADO CON SALUDO Y BOTÓN CORREDIZO MODO OSCURO */}
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '15px' }}>
                 <h2 style={{ margin: 0 }}>Bienvenido, {usuarioInfo.nombre} 🥐 {esEmpresa && <span style={{fontSize:'16px', color:'#17a2b8'}}>(🏢 Cuenta Empresa)</span>}</h2>
-                <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '10px 20px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cerrar Sesión</button>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <BotonModoOscuro />
+                    <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '10px 20px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cerrar Sesión</button>
+                </div>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
@@ -288,7 +295,6 @@ function Tienda() {
                                                     border: estaAbierta ? '1px solid #ccc' : '2px solid #dc3545', 
                                                     padding: '15px', 
                                                     borderRadius: '8px', 
-                                                    backgroundColor: estaAbierta ? 'white' : '#fff5f5', 
                                                     textAlign: 'center',
                                                     cursor: 'pointer',
                                                     boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
@@ -310,7 +316,7 @@ function Tienda() {
                                                 <h4 style={{ margin: '5px 0' }}>{tienda.nombre}</h4>
                                                 <p style={{ margin: '0 0 5px 0', fontSize: '12px', color: '#666', height: '32px', overflow: 'hidden' }}>{tienda.descripcion || 'Sin descripción'}</p>
                                                 
-                                                <p style={{ margin: '2px 0 8px 0', fontSize: '11px', color: '#333' }}>
+                                                <p style={{ margin: '2px 0 8px 0', fontSize: '11px' }}>
                                                     📍 {dirTienda.texto}
                                                 </p>
 
@@ -341,7 +347,7 @@ function Tienda() {
                             {(() => {
                                 const dirTienda = parseDireccion(tiendaSeleccionada.direccion);
                                 return (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', backgroundColor: esTiendaAbierta(tiendaSeleccionada) ? '#e9ecef' : '#f8d7da', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ddd' }}>
                                         <img 
                                             src={tiendaSeleccionada.logo_url ? `${API_URL}${tiendaSeleccionada.logo_url}` : 'https://via.placeholder.com/60?text=Tienda'} 
                                             alt="Logo Tienda" 
@@ -350,7 +356,7 @@ function Tienda() {
                                         <div>
                                             <h3 style={{ margin: 0 }}>{tiendaSeleccionada.nombre} {!esTiendaAbierta(tiendaSeleccionada) && <span style={{ color: '#dc3545', fontSize: '14px' }}>(🔴 Cerrado)</span>}</h3>
                                             <p style={{ margin: '2px 0', fontSize: '13px', color: '#555' }}>{tiendaSeleccionada.descripcion}</p>
-                                            <p style={{ margin: '2px 0', fontSize: '12px', color: '#333' }}>
+                                            <p style={{ margin: '2px 0', fontSize: '12px' }}>
                                                 📍 <strong>Dirección:</strong> {dirTienda.texto}
                                             </p>
                                             {dirTienda.gps && (
@@ -368,7 +374,7 @@ function Tienda() {
                                     productosDeTienda.map(prod => {
                                         const estaDisponible = prod.disponible && esTiendaAbierta(tiendaSeleccionada);
                                         return (
-                                            <div key={prod.id} style={{ opacity: estaDisponible ? 1 : 0.6, border: '1px solid #ccc', padding: '15px', borderRadius: '8px', backgroundColor: 'white' }}>
+                                            <div key={prod.id} style={{ opacity: estaDisponible ? 1 : 0.6, border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
                                                 <img src={prod.imagen || 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500'} alt={prod.nombre} style={{ width: '100%', height: '130px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px' }} />
                                                 
                                                 <h4 style={{ margin: '0 0 5px 0' }}>{prod.nombre}</h4>
@@ -393,16 +399,16 @@ function Tienda() {
                     )}
                 </div>
                 
-                <div style={{ flex: '1 1 30%', minWidth: '300px', border: '1px solid #eee', padding: '20px', borderRadius: '8px', backgroundColor: '#fdfdfd', height: 'fit-content' }}>
+                <div style={{ flex: '1 1 30%', minWidth: '300px', border: '1px solid #eee', padding: '20px', borderRadius: '8px', height: 'fit-content' }}>
                     <h3 style={{ marginTop: 0 }}>Tu Carrito 🛒</h3>
                     {carrito.length === 0 ? (
                         <p style={{ color: '#888', fontSize: '14px' }}>El carrito está vacío.</p>
                     ) : (
                         carrito.map((item, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: 'white', marginBottom: '10px' }}>
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '10px' }}>
                                 <div>
                                     <strong style={{ display: 'block' }}>{item.cantidad}x {item.nombre}</strong>
-                                    <span style={{ color: '#555', fontSize: '12px' }}>${item.subtotal.toLocaleString()}</span>
+                                    <span style={{ fontSize: '12px' }}>${item.subtotal.toLocaleString()}</span>
                                 </div>
                                 <button onClick={() => eliminarDelCarrito(item.id)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer' }}>❌</button>
                             </div>
@@ -410,12 +416,12 @@ function Tienda() {
                     )}
                     
                     <div style={{ borderTop: '2px solid #eee', paddingTop: '15px' }}>
-                        <p style={{ margin: '5px 0', fontSize: '16px', color: '#555' }}>Subtotal: <strong style={{ float: 'right' }}>${subtotalCarrito.toLocaleString()}</strong></p>
+                        <p style={{ margin: '5px 0', fontSize: '16px' }}>Subtotal: <strong style={{ float: 'right' }}>${subtotalCarrito.toLocaleString()}</strong></p>
                         <p style={{ margin: '5px 0', fontSize: '16px', color: '#17a2b8' }}>Domicilio: <strong style={{ float: 'right' }}>${costoDomicilio.toLocaleString()}</strong></p>
                         <h3 style={{ margin: '10px 0 0 0', color: '#28a745', fontSize: '22px' }}>Total a Pagar: <span style={{ float: 'right' }}>${totalFinal.toLocaleString()}</span></h3>
                     </div>
                     
-                    <div style={{ backgroundColor: '#e9ecef', padding: '15px', borderRadius: '6px', marginBottom: '15px', marginTop: '15px' }}>
+                    <div style={{ padding: '15px', borderRadius: '6px', marginBottom: '15px', marginTop: '15px', border: '1px solid #ddd' }}>
                         <strong style={{ display: 'block', marginBottom: '8px' }}>📍 Destino de entrega:</strong>
                         <textarea value={direccionManual} onChange={(e) => {setDireccionManual(e.target.value); if(!e.target.value.startsWith('http')) setCostoDomicilio(esEmpresa?0:4000);}} placeholder={esEmpresa ? "Detalles de entrega..." : "Detalles de entrega (Tarifa base $4,000)"} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical', minHeight: '60px', boxSizing: 'border-box' }} />
                         
@@ -467,7 +473,7 @@ function Tienda() {
             
             <hr style={{ margin: '30px 0', borderColor: '#eee' }} />
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8f9fa', padding: '15px 20px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }} onClick={() => setMostrarPedidos(!mostrarPedidos)}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }} onClick={() => setMostrarPedidos(!mostrarPedidos)}>
                 <h3 style={{ margin: 0 }}>Tus Pedidos Realizados 📦</h3><span style={{ fontSize: '20px', fontWeight: 'bold', color: '#007bff' }}>{mostrarPedidos ? 'Ocultar 🔼' : 'Ver Historial 🔽'}</span>
             </div>
 
@@ -488,7 +494,7 @@ function Tienda() {
                         }
 
                         return (
-                        <div key={pedido.id} style={{ padding: '20px', border: enRuta ? '2px solid #007bff' : (cancelado ? '2px solid #dc3545' : '1px solid #ddd'), borderRadius: '8px', backgroundColor: cancelado ? '#fff5f5' : '#fff' }}>
+                        <div key={pedido.id} style={{ padding: '20px', border: enRuta ? '2px solid #007bff' : (cancelado ? '2px solid #dc3545' : '1px solid #ddd'), borderRadius: '8px' }}>
                             <strong style={{ fontSize: '18px' }}>Pedido #{pedido.id}</strong> <span style={{ color: '#666', marginLeft: '10px' }}>{new Date(pedido.fecha_creacion).toLocaleString()}</span>
                             <p style={{ margin: '8px 0 0 0', fontSize: '15px' }}>
                                 Total: <strong>${Number(pedido.total).toLocaleString()}</strong> | Pago: <strong style={{ color: '#007bff' }}>{pedido.metodo_pago.toUpperCase()}</strong>
