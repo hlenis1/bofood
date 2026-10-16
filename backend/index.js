@@ -15,17 +15,19 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '-'))
 });
 const upload = multer({ storage });
+
+// Servir la carpeta pública de imágenes
 app.use('/uploads', express.static(uploadDir));
 
 // ==========================================
-// 🛠️ MOTOR DE PARCHE DE BASE DE DATOS
+// 🛠️ MOTOR DE PARCHE Y LIMPIEZA DE BASE DE DATOS
 // ==========================================
 const ejecutarParche = async () => {
     const queries = [
@@ -74,10 +76,29 @@ const ejecutarParche = async () => {
             abierta BOOLEAN DEFAULT 1,
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
         )`,
-        "ALTER TABLE tiendas ADD COLUMN abierta BOOLEAN DEFAULT 1"
+        "ALTER TABLE tiendas ADD COLUMN abierta BOOLEAN DEFAULT 1",
+
+        // 🔄 LIMPIEZA AUTOMÁTICA DE URLS CON LOCALHOST GUARDADAS EN LA BASE DE DATOS
+        "UPDATE usuarios SET banco_imagen = REPLACE(banco_imagen, 'http://localhost:3000', '') WHERE banco_imagen LIKE '%localhost%'",
+        "UPDATE bancos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'",
+        "UPDATE tiendas SET logo_url = REPLACE(logo_url, 'http://localhost:3000', '') WHERE logo_url LIKE '%localhost%'",
+        "UPDATE productos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'"
     ];
     for (let q of queries) { try { await db.query(q); } catch (e) {} }
     try { await db.query("ALTER TABLE recargas CHANGE domiciliario_id usuario_id INT"); } catch (e) {}
+
+    // Si no existe un usuario admin, promueve automáticamente al primer registro
+    try {
+        const [admsCheck] = await db.query("SELECT id FROM usuarios WHERE rol = 'admin'");
+        if (admsCheck.length === 0) {
+            const [primerUsr] = await db.query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1");
+            if (primerUsr.length > 0) {
+                await db.query("UPDATE usuarios SET rol = 'admin' WHERE id = ?", [primerUsr[0].id]);
+            }
+        }
+    } catch (e) {
+        console.error("Error al asignar admin:", e);
+    }
 
     try {
         const [adm] = await db.query("SELECT id, nombre, direccion, telefono FROM usuarios WHERE rol = 'admin' LIMIT 1");
@@ -98,7 +119,10 @@ const ejecutarParche = async () => {
 
 ejecutarParche();
 
-app.get('/api/arreglar-bd', async (req, res) => { await ejecutarParche(); res.json({ success: true, message: "Parcheado." }); });
+app.get('/api/arreglar-bd', async (req, res) => { 
+    await ejecutarParche(); 
+    res.json({ success: true, message: "Base de datos parcheada y URLs de imágenes corregidas a relativas." }); 
+});
 
 io.on('connection', (socket) => { 
     socket.on('ubicacion_domiciliario', (data) => io.emit('ubicacion_domiciliario', data)); 
@@ -122,7 +146,11 @@ app.post('/api/registro', async (req, res) => {
     try {
         const [existe] = await db.query('SELECT id FROM usuarios WHERE email = ?', [email]);
         if (existe.length > 0) return res.status(400).json({ message: 'El correo ya está registrado' });
-        await db.query('INSERT INTO usuarios (nombre, email, password, direccion, telefono, rol, es_empresa) VALUES (?, ?, ?, ?, ?, ?, ?)', [nombre, email, password, direccion, telefono, 'cliente', false]);
+
+        const [cantUsuarios] = await db.query('SELECT COUNT(*) as total FROM usuarios');
+        const rolAsignado = (cantUsuarios[0].total === 0) ? 'admin' : 'cliente';
+
+        await db.query('INSERT INTO usuarios (nombre, email, password, direccion, telefono, rol, es_empresa) VALUES (?, ?, ?, ?, ?, ?, ?)', [nombre, email, password, direccion, telefono, rolAsignado, false]);
         res.json({ success: true });
     } catch (error) { res.status(500).json({ message: 'Error al registrar' }); }
 });
@@ -210,7 +238,7 @@ app.post('/api/config-banco', upload.single('imagen'), async (req, res) => {
     const { banco_nombre, banco_numero } = req.body;
     try {
         if (req.file) {
-            const urlImagen = `http://localhost:3000/uploads/${req.file.filename}`;
+            const urlImagen = `/uploads/${req.file.filename}`;
             await db.query("UPDATE usuarios SET banco_nombre = ?, banco_numero = ?, banco_imagen = ? WHERE rol = 'admin'", [banco_nombre, banco_numero, urlImagen]);
         } else {
             await db.query("UPDATE usuarios SET banco_nombre = ?, banco_numero = ? WHERE rol = 'admin'", [banco_nombre, banco_numero]);
@@ -227,7 +255,7 @@ app.get('/api/bancos', async (req, res) => { try { const [b] = await db.query('S
 
 app.post('/api/bancos', upload.single('imagen'), async (req, res) => {
     try {
-        const urlImagen = req.file ? `http://localhost:3000/uploads/${req.file.filename}` : '';
+        const urlImagen = req.file ? `/uploads/${req.file.filename}` : '';
         await db.query('INSERT INTO bancos (nombre, numero, imagen) VALUES (?, ?, ?)', [req.body.nombre, req.body.numero, urlImagen]);
         res.json({ success: true });
     } catch (e) { res.status(500).send('Error'); }
@@ -269,7 +297,7 @@ app.get('/api/productos', async (req, res) => {
 
 app.post('/api/productos', upload.single('imagen'), async (req, res) => {
     let { nombre, categoria, precio, vendedor_id } = req.body;
-    const urlImagen = req.file ? `http://localhost:3000/uploads/${req.file.filename}` : 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500';
+    const urlImagen = req.file ? `/uploads/${req.file.filename}` : 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500';
     try {
         if (!vendedor_id) {
             const [adm] = await db.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
