@@ -7,6 +7,10 @@ import { BotonModoOscuro } from './BotonModoOscuro';
 const API_URL = '';
 const socket = io(API_URL);
 
+// 🎨 LOGO Y IMAGEN DE PRODUCTO POR DEFECTO (SVG Base64 que NUNCA falla)
+const LOGO_DEFAULT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='50' fill='%23007bff'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='45' fill='white'%3E🏪%3C/text%3E%3C/svg%3E";
+const PROD_DEFAULT = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500";
+
 const calcularDistancia = (lat1, lon1, lat2, lon2) => {
     const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180); 
@@ -308,9 +312,11 @@ function Tienda() {
                                                     </span>
                                                 )}
 
+                                                {/* 🖼️ LOGO CON MANEJADOR onError PARA EVITAR TEXTO ROTO */}
                                                 <img 
-                                                    src={tienda.logo_url ? `${API_URL}${tienda.logo_url}` : 'https://via.placeholder.com/80?text=Tienda'} 
+                                                    src={tienda.logo_url ? `${API_URL}${tienda.logo_url}` : LOGO_DEFAULT} 
                                                     alt={tienda.nombre} 
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = LOGO_DEFAULT; }}
                                                     style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', marginBottom: '10px', border: estaAbierta ? '2px solid #007bff' : '2px solid #dc3545' }} 
                                                 />
                                                 <h4 style={{ margin: '5px 0' }}>{tienda.nombre}</h4>
@@ -349,8 +355,9 @@ function Tienda() {
                                 return (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ddd' }}>
                                         <img 
-                                            src={tiendaSeleccionada.logo_url ? `${API_URL}${tiendaSeleccionada.logo_url}` : 'https://via.placeholder.com/60?text=Tienda'} 
+                                            src={tiendaSeleccionada.logo_url ? `${API_URL}${tiendaSeleccionada.logo_url}` : LOGO_DEFAULT} 
                                             alt="Logo Tienda" 
+                                            onError={(e) => { e.target.onerror = null; e.target.src = LOGO_DEFAULT; }}
                                             style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} 
                                         />
                                         <div>
@@ -375,7 +382,12 @@ function Tienda() {
                                         const estaDisponible = prod.disponible && esTiendaAbierta(tiendaSeleccionada);
                                         return (
                                             <div key={prod.id} style={{ opacity: estaDisponible ? 1 : 0.6, border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
-                                                <img src={prod.imagen || 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500'} alt={prod.nombre} style={{ width: '100%', height: '130px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px' }} />
+                                                <img 
+                                                    src={prod.imagen ? `${API_URL}${prod.imagen}` : PROD_DEFAULT} 
+                                                    alt={prod.nombre} 
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = PROD_DEFAULT; }}
+                                                    style={{ width: '100%', height: '130px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px' }} 
+                                                />
                                                 
                                                 <h4 style={{ margin: '0 0 5px 0' }}>{prod.nombre}</h4>
 
