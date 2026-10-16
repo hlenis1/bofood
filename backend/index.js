@@ -586,7 +586,12 @@ app.get('/api/recargas', async (req, res) => {
 app.post('/api/recargas', async (req, res) => { 
     const uid = req.body.usuario_id || req.body.domiciliario_id;
     try { 
-        await db.query('INSERT INTO recargas (usuario_id, monto, referencia, banco_destino) VALUES (?, ?, ?, ?)', [uid, req.body.monto, req.body.referencia, req.body.banco_destino || '']); 
+        const [r] = await db.query('INSERT INTO recargas (usuario_id, monto, referencia, banco_destino) VALUES (?, ?, ?, ?)', [uid, req.body.monto, req.body.referencia, req.body.banco_destino || '']); 
+
+        // 🚀 SOCKET: Avisa al Admin al instante de una nueva recarga
+        io.emit('nueva_recarga', { id: r.insertId, usuario_id: uid, monto: req.body.monto });
+        io.emit('catalogo_actualizado');
+
         res.json({ success: true }); 
     } catch (e) { res.status(500).send('Error'); } 
 });
@@ -594,15 +599,24 @@ app.post('/api/recargas', async (req, res) => {
 app.put('/api/recargas/:id/estado', async (req, res) => {
     try {
         const [r] = await db.query('SELECT monto, usuario_id, estado FROM recargas WHERE id = ?', [req.params.id]);
-        if (r[0].estado === 'pendiente' && req.body.estado === 'aprobada') {
+        if (r.length > 0 && r[0].estado === 'pendiente' && req.body.estado === 'aprobada') {
             await db.query('UPDATE usuarios SET saldo = saldo + ? WHERE id = ?', [r[0].monto, r[0].usuario_id]);
         }
         await db.query('UPDATE recargas SET estado = ? WHERE id = ?', [req.body.estado, req.params.id]);
-        io.emit('catalogo_actualizado');
-        res.json({ success: true });
-    } catch (e) { res.status(500).send('Error'); }
-});
 
+        // 🚀 SOCKET: Avisa a la Tienda o Domiciliario que su saldo/recarga cambió en tiempo real
+        if (r.length > 0) {
+            io.emit('recarga_actualizada', { id: Number(req.params.id), usuario_id: r[0].usuario_id, estado: req.body.estado });
+            io.emit('usuario_actualizado', { id: r[0].usuario_id });
+        }
+        io.emit('catalogo_actualizado');
+
+        res.json({ success: true });
+    } catch (e) { 
+        console.error("Error al actualizar estado de recarga:", e);
+        res.status(500).send('Error'); 
+    }
+});
 // ========================================================
 // 🏪 ENDPOINTS DE LA TIENDA Y ESTADO
 // ========================================================
