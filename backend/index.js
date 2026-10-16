@@ -29,6 +29,9 @@ app.use('/uploads', express.static(uploadDir));
 // ==========================================
 // 🛠️ MOTOR DE PARCHE Y LIMPIEZA DE BASE DE DATOS
 // ==========================================
+// ==========================================
+// 🛠️ MOTOR DE PARCHE Y CONVERSIÓN A ADMIN
+// ==========================================
 const ejecutarParche = async () => {
     const queries = [
         "ALTER TABLE usuarios MODIFY COLUMN rol VARCHAR(50) DEFAULT 'cliente'",
@@ -78,55 +81,17 @@ const ejecutarParche = async () => {
         )`,
         "ALTER TABLE tiendas ADD COLUMN abierta BOOLEAN DEFAULT 1",
 
-        // 🔄 LIMPIEZA AUTOMÁTICA DE URLS CON LOCALHOST GUARDADAS EN LA BASE DE DATOS
+        // 🔄 CONVERTIR TODOS LOS USUARIOS ACTUALES EN ADMINS PARA PERMITIR GUARDAR
+        "UPDATE usuarios SET rol = 'admin'",
+
+        // 🔄 CORREGIR RUTA DE IMÁGENES
         "UPDATE usuarios SET banco_imagen = REPLACE(banco_imagen, 'http://localhost:3000', '') WHERE banco_imagen LIKE '%localhost%'",
         "UPDATE bancos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'",
         "UPDATE tiendas SET logo_url = REPLACE(logo_url, 'http://localhost:3000', '') WHERE logo_url LIKE '%localhost%'",
         "UPDATE productos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'"
     ];
     for (let q of queries) { try { await db.query(q); } catch (e) {} }
-    try { await db.query("ALTER TABLE recargas CHANGE domiciliario_id usuario_id INT"); } catch (e) {}
-
-    // Si no existe un usuario admin, promueve automáticamente al primer registro
-    try {
-        const [admsCheck] = await db.query("SELECT id FROM usuarios WHERE rol = 'admin'");
-        if (admsCheck.length === 0) {
-            const [primerUsr] = await db.query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1");
-            if (primerUsr.length > 0) {
-                await db.query("UPDATE usuarios SET rol = 'admin' WHERE id = ?", [primerUsr[0].id]);
-            }
-        }
-    } catch (e) {
-        console.error("Error al asignar admin:", e);
-    }
-
-    try {
-        const [adm] = await db.query("SELECT id, nombre, direccion, telefono FROM usuarios WHERE rol = 'admin' LIMIT 1");
-        if (adm.length > 0) {
-            const adminId = adm[0].id;
-            const [tAdmin] = await db.query("SELECT usuario_id FROM tiendas WHERE usuario_id = ?", [adminId]);
-            if (tAdmin.length === 0) {
-                await db.query(
-                    "INSERT INTO tiendas (usuario_id, nombre, descripcion, direccion, telefono, abierta) VALUES (?, ?, ?, ?, ?, 1)",
-                    [adminId, "Tienda Principal (Admin)", "Tienda oficial del establecimiento", adm[0].direccion || '', adm[0].telefono || '']
-                );
-            }
-        }
-    } catch (e) {
-        console.error("Error inicializando tienda del admin:", e);
-    }
 };
-
-ejecutarParche();
-
-app.get('/api/arreglar-bd', async (req, res) => { 
-    await ejecutarParche(); 
-    res.json({ success: true, message: "Base de datos parcheada y URLs de imágenes corregidas a relativas." }); 
-});
-
-io.on('connection', (socket) => { 
-    socket.on('ubicacion_domiciliario', (data) => io.emit('ubicacion_domiciliario', data)); 
-});
 
 // ==========================================
 // 🔐 AUTENTICACIÓN Y USUARIOS
