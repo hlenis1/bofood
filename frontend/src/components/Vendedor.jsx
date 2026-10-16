@@ -64,9 +64,23 @@ function Vendedor() {
         setUsuarioInfo(info);
         cargarDatos(info.id);
 
-        socket.on('nuevo_pedido', () => { cargarDatos(info.id); audioNuevoPedido.play().catch(e=>console.log(e)); });
-        socket.on('estado_actualizado', () => cargarDatos(info.id));
-        return () => { socket.off('nuevo_pedido'); socket.off('estado_actualizado'); };
+        // 🚀 OYENTES DE SOCKET EN TIEMPO REAL
+        const manejarNuevoPedido = () => { cargarDatos(info.id); audioNuevoPedido.play().catch(e=>console.log(e)); };
+        const manejarActualizaciones = () => cargarDatos(info.id);
+
+        socket.on('nuevo_pedido', manejarNuevoPedido);
+        socket.on('estado_actualizado', manejarActualizaciones);
+        socket.on('recarga_actualizada', manejarActualizaciones);
+        socket.on('usuario_actualizado', manejarActualizaciones);
+        socket.on('catalogo_actualizado', manejarActualizaciones);
+
+        return () => { 
+            socket.off('nuevo_pedido', manejarNuevoPedido); 
+            socket.off('estado_actualizado', manejarActualizaciones);
+            socket.off('recarga_actualizada', manejarActualizaciones);
+            socket.off('usuario_actualizado', manejarActualizaciones);
+            socket.off('catalogo_actualizado', manejarActualizaciones);
+        };
     }, [navigate]);
 
     const toggleEstadoTienda = async () => {

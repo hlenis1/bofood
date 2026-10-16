@@ -97,21 +97,34 @@ function Domiciliario() {
         const cargarPedidos = () => {
             axios.get('/api/pedidos').then(res => setPedidos(res.data)).catch(console.error);
             cargarMisDatos(usuarioInfo.id);
+            cargarRecargas();
         };
-        cargarPedidos();
-        cargarRecargas();
 
+        const manejarActualizacionesCuenta = () => {
+            cargarMisDatos(usuarioInfo.id);
+            cargarRecargas();
+        };
+
+        cargarPedidos();
+
+        // 🚀 OYENTES DE SOCKET EN TIEMPO REAL PARA EL DOMICILIARIO
         socket.on('nuevo_pedido', cargarPedidos);
         socket.on('estado_actualizado', (data) => {
             cargarPedidos();
             if (data.estado === 'listo_para_entrega') audioNuevoViaje.play().catch(e=>console.log(e));
         });
         socket.on('pedido_eliminado', cargarPedidos);
+        socket.on('recarga_actualizada', manejarActualizacionesCuenta);
+        socket.on('usuario_actualizado', manejarActualizacionesCuenta);
+        socket.on('catalogo_actualizado', manejarActualizacionesCuenta);
 
         return () => {
-            socket.off('nuevo_pedido'); 
+            socket.off('nuevo_pedido', cargarPedidos); 
             socket.off('estado_actualizado'); 
-            socket.off('pedido_eliminado');
+            socket.off('pedido_eliminado', cargarPedidos);
+            socket.off('recarga_actualizada', manejarActualizacionesCuenta);
+            socket.off('usuario_actualizado', manejarActualizacionesCuenta);
+            socket.off('catalogo_actualizado', manejarActualizacionesCuenta);
             if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
         };
     }, [usuarioInfo]);
