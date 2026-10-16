@@ -90,8 +90,25 @@ const ejecutarParche = async () => {
         "UPDATE tiendas SET logo_url = REPLACE(logo_url, 'http://localhost:3000', '') WHERE logo_url LIKE '%localhost%'",
         "UPDATE productos SET imagen = REPLACE(imagen, 'http://localhost:3000', '') WHERE imagen LIKE '%localhost%'"
     ];
-    for (let q of queries) { try { await db.query(q); } catch (e) {} }
+   for (let q of queries) { try { await db.query(q); } catch (e) {} }
 };
+
+// 🚀 EJECUTAR PARCHE Y CREAR RUTA HTTP (AGREGAR ESTAS LÍNEAS)
+ejecutarParche();
+
+app.get('/api/arreglar-bd', async (req, res) => {
+    await ejecutarParche();
+    res.json({ success: true, message: "Base de datos parcheada y usuario promovido a admin." });
+});
+
+// ==========================================
+// 🔐 AUTENTICACIÓN Y USUARIOS
+// ==========================================
+
+
+
+
+
 
 // ==========================================
 // 🔐 AUTENTICACIÓN Y USUARIOS
