@@ -23,6 +23,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// 🛡️ FUNCIÓN SANITIZADORA PARA GARANTIZAR LA RUTA /uploads/
+const fixImg = (url) => {
+    if (!url) return url;
+    if (typeof url !== 'string') return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/uploads/')) return url;
+    if (url.startsWith('uploads/')) return '/' + url;
+    return '/uploads/' + url.replace(/^\/+/, '');
+};
+
 // ==========================================
 // 🖼️ SERVIR IMÁGENES SIN CACHÉ RETENIDA EN NAVEGADORES
 // ==========================================
@@ -236,7 +246,14 @@ app.put('/api/usuarios/:id/pagar-deuda', async (req, res) => {
 // ==========================================
 
 app.get('/api/config-admin', async (req, res) => {
-    try { const [adm] = await db.query("SELECT * FROM usuarios WHERE rol = 'admin' LIMIT 1"); res.json(adm[0] || {}); } catch (e) { res.status(500).send('Error'); }
+    try { 
+        const [adm] = await db.query("SELECT * FROM usuarios WHERE rol = 'admin' LIMIT 1"); 
+        if (adm.length > 0) {
+            res.json({ ...adm[0], banco_imagen: fixImg(adm[0].banco_imagen) });
+        } else {
+            res.json({});
+        }
+    } catch (e) { res.status(500).send('Error'); }
 });
 
 app.put('/api/config-admin', async (req, res) => {
@@ -277,7 +294,13 @@ app.delete('/api/config-banco', async (req, res) => {
     try { await db.query("UPDATE usuarios SET banco_nombre = '', banco_numero = '', banco_imagen = '' WHERE rol = 'admin'"); res.json({ success: true }); } catch (e) { res.status(500).send('Error'); }
 });
 
-app.get('/api/bancos', async (req, res) => { try { const [b] = await db.query('SELECT * FROM bancos ORDER BY id DESC'); res.json(b); } catch (e) { res.status(500).send('Error'); } });
+app.get('/api/bancos', async (req, res) => { 
+    try { 
+        const [b] = await db.query('SELECT * FROM bancos ORDER BY id DESC'); 
+        const bancosProcesados = b.map(item => ({ ...item, imagen: fixImg(item.imagen) }));
+        res.json(bancosProcesados); 
+    } catch (e) { res.status(500).send('Error'); } 
+});
 
 app.post('/api/bancos', upload.single('imagen'), async (req, res) => {
     try {
@@ -311,8 +334,13 @@ app.get('/api/productos', async (req, res) => {
         const vendedoresBloqueados = usr.map(u => u.id);
         
         const productosProcesados = p.map(prod => {
-            if (prod.vendedor_id && vendedoresBloqueados.includes(prod.vendedor_id)) return { ...prod, disponible: 0, bloqueado_por_saldo: true };
-            return prod;
+            const item = {
+                ...prod,
+                imagen: fixImg(prod.imagen),
+                tienda_logo: fixImg(prod.tienda_logo)
+            };
+            if (prod.vendedor_id && vendedoresBloqueados.includes(prod.vendedor_id)) return { ...item, disponible: 0, bloqueado_por_saldo: true };
+            return item;
         });
         res.json(productosProcesados); 
     } catch (e) { 
@@ -652,7 +680,11 @@ app.get('/api/tiendas', async (req, res) => {
             WHERE u.rol IN ('vendedor', 'admin')
         `;
         const [tiendas] = await db.query(query);
-        res.json(tiendas);
+        const formateadas = tiendas.map(t => ({
+            ...t,
+            logo_url: fixImg(t.logo_url)
+        }));
+        res.json(formateadas);
     } catch (err) {
         console.error("Error al obtener tiendas:", err);
         res.status(500).json({ error: 'Error al obtener las tiendas' });
@@ -664,7 +696,8 @@ app.get('/api/vendedor/tienda/:id', async (req, res) => {
     try {
         const [results] = await db.query('SELECT * FROM tiendas WHERE usuario_id = ?', [usuario_id]);
         if (results.length > 0) {
-            res.json(results[0]);
+            const t = results[0];
+            res.json({ ...t, logo_url: fixImg(t.logo_url) });
         } else {
             res.json(null);
         }
