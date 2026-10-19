@@ -7,7 +7,7 @@ import { BotonModoOscuro } from './BotonModoOscuro';
 const API_URL = '';
 const socket = io(API_URL);
 
-// 🎨 LOGO Y IMAGEN DE PRODUCTO POR DEFECTO (SVG Base64 que NUNCA falla)
+// 🎨 LOGOS E IMÁGENES POR DEFECTO
 const LOGO_DEFAULT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='50' fill='%23007bff'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='45' fill='white'%3E🏪%3C/text%3E%3C/svg%3E";
 const PROD_DEFAULT = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500";
 
@@ -40,6 +40,9 @@ function Tienda() {
     const [tiendas, setTiendas] = useState([]);
     const [tiendaSeleccionada, setTiendaSeleccionada] = useState(null);
 
+    // 📱 PESTAÑA ACTIVA: 'tiendas' | 'carrito' | 'seguimiento' | 'historial'
+    const [vistaActiva, setVistaActiva] = useState('tiendas');
+
     const [carrito, setCarrito] = useState([]);
     const [misPedidos, setMisPedidos] = useState([]);
     const [metodoPago, setMetodoPago] = useState('efectivo'); 
@@ -48,18 +51,15 @@ function Tienda() {
     const [gpsDomiciliario, setGpsDomiciliario] = useState({});
     
     const [bancos, setBancos] = useState([]);
-
     const [miUbicacionCliente, setMiUbicacionCliente] = useState(null);
     const watchClienteRef = useRef(null);
 
     const navigate = useNavigate();
     
-    const [perfilDireccion, setPerfilDireccion] = useState('');
     const [direccionManual, setDireccionManual] = useState('');
     const [linkGPS, setLinkGPS] = useState('');
     const [costoDomicilio, setCostoDomicilio] = useState(4000);
     const [ubicacionPanaderia, setUbicacionPanaderia] = useState({ lat: 3.261200, lon: -76.539300 });
-    const [mostrarPedidos, setMostrarPedidos] = useState(false);
     const [esEmpresa, setEsEmpresa] = useState(false);
 
     useEffect(() => {
@@ -76,7 +76,6 @@ function Tienda() {
             
             const dirTexto = (info.direccion || '').split(' |GPS| ')[0] || '';
             const dirGps = (info.direccion || '').split(' |GPS| ')[1] || '';
-            setPerfilDireccion(dirTexto); 
             setDireccionManual(dirTexto); 
             setLinkGPS(dirGps);
         } catch (e) { 
@@ -98,14 +97,13 @@ function Tienda() {
                 ]);
 
                 let listaTiendas = resTiendas.data || [];
-                
                 const existeAdminStore = listaTiendas.some(t => t.es_principal || t.rol === 'admin' || Number(t.usuario_id) === 1);
                 if (!existeAdminStore) {
                     listaTiendas = [
                         {
                             usuario_id: 1,
                             nombre: 'Tienda Principal',
-                            descripcion: 'Productos oficiales de la panadería principal',
+                            descripcion: 'Productos oficiales del establecimiento',
                             logo_url: null,
                             es_principal: true,
                             abierta: 1
@@ -175,7 +173,7 @@ function Tienda() {
 
     const agregarAlCarrito = (producto) => {
         if (tiendaSeleccionada && !esTiendaAbierta(tiendaSeleccionada)) {
-            return alert('🔴 La tienda se encuentra CERRADA en este momento. No es posible realizar compras.');
+            return alert('🔴 La tienda se encuentra CERRADA en este momento.');
         }
         const cant = cantidades[producto.id] || 1;
         const existe = carrito.find(item => item.id === producto.id);
@@ -200,25 +198,24 @@ function Tienda() {
                     const lonCliente = pos.coords.longitude;
                     setLinkGPS(`https://maps.google.com/?q=${latCliente},${lonCliente}`);
                     const distanciaKm = calcularDistancia(ubicacionPanaderia.lat, ubicacionPanaderia.lon, latCliente, lonCliente);
-                    
                     let tarifa = esEmpresa ? 0 : (distanciaKm <= 2 ? 4000 : distanciaKm <= 4 ? 6000 : distanciaKm <= 10 ? 10000 : 15000);
-                    alert(esEmpresa ? `¡GPS capturado!\n🏢 Eres cliente EMPRESA: Envío gratuito.` : `¡GPS capturado!\nEstás a ${distanciaKm.toFixed(1)} km.\nCosto del domicilio: $${tarifa.toLocaleString()}`);
+                    alert(esEmpresa ? `¡GPS capturado!\n🏢 Cliente EMPRESA: Envío gratuito.` : `¡GPS capturado!\nEstás a ${distanciaKm.toFixed(1)} km.\nDomicilio: $${tarifa.toLocaleString()}`);
                     setCostoDomicilio(tarifa);
-                }, () => alert("Error de GPS.")
+                }, () => alert("Error al capturar GPS.")
             );
-        } else alert("Tu navegador no soporta geolocalización.");
+        } else alert("Navegador sin soporte de geolocalización.");
     };
 
     const hacerPedido = async () => {
         if (carrito.length === 0) return alert('El carrito está vacío');
         if (tiendaSeleccionada && !esTiendaAbierta(tiendaSeleccionada)) {
-            return alert('🔴 La tienda seleccionada está CERRADA. No puedes completar el pedido.');
+            return alert('🔴 La tienda seleccionada está CERRADA.');
         }
         let direccionFinal = linkGPS ? `${direccionManual} |GPS| ${linkGPS}` : direccionManual;
         if (!direccionFinal.trim()) return alert('Por favor ingresa tu dirección.');
 
         if (metodoPago !== 'efectivo' && !referenciaPago.trim()) {
-            return alert('Por favor ingresa el número de referencia / comprobante de la transferencia.');
+            return alert('Por favor ingresa el número de comprobante/referencia.');
         }
 
         try {
@@ -236,10 +233,13 @@ function Tienda() {
                 detalles: JSON.stringify(carrito) 
             });
             
-            alert('¡Pedido enviado exitosamente!'); 
+            alert('🚀 ¡Pedido enviado exitosamente!'); 
             setCarrito([]); 
             setReferenciaPago('');
-            setMostrarPedidos(true); 
+            
+            // 🚀 CAMBIO AUTOMÁTICO A LA PESTAÑA DE SEGUIMIENTO
+            setVistaActiva('seguimiento'); 
+
             axios.get(`${API_URL}/api/pedidos/cliente/${usuarioInfo.id}`).then(res => setMisPedidos(res.data));
         } catch (error) { 
             alert('Error al procesar el pedido'); 
@@ -258,26 +258,34 @@ function Tienda() {
             if (tiendaSeleccionada.es_principal || tiendaSeleccionada.rol === 'admin' || tiendaId === 1) {
                 return prodVendedorId === tiendaId || prodVendedorId === null || prodVendedorId === 0;
             }
-
             return prodVendedorId === tiendaId;
         })
         : [];
 
+    const pedidosActivos = misPedidos.filter(p => p.estado !== 'entregado' && p.estado !== 'cancelado' && p.estado !== 'cancelado_devuelto');
+    const historialPedidos = misPedidos.filter(p => p.estado === 'entregado' || p.estado === 'cancelado' || p.estado === 'cancelado_devuelto');
+
     return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', minHeight: '100vh' }}>
+        <div style={{ padding: '15px', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', paddingBottom: '110px', minHeight: '100vh' }}>
             
-            {/* ENCABEZADO CON SALUDO Y BOTÓN CORREDIZO MODO OSCURO */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '15px' }}>
-                <h2 style={{ margin: 0 }}>Bienvenido, {usuarioInfo.nombre} 🥐 {esEmpresa && <span style={{fontSize:'16px', color:'#17a2b8'}}>(🏢 Cuenta Empresa)</span>}</h2>
+            {/* ENCABEZADO SUPERIOR */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '12px' }}>
+                <div>
+                    <h3 style={{ margin: 0, fontSize: '18px' }}>Hola, {usuarioInfo.nombre} 🥐</h3>
+                    {esEmpresa && <span style={{ fontSize: '12px', color: '#17a2b8', fontWeight: 'bold' }}>🏢 Cuenta Empresa</span>}
+                </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <BotonModoOscuro />
-                    <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '10px 20px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Cerrar Sesión</button>
+                    <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>Salir</button>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-                <div style={{ flex: '1 1 60%', minWidth: '300px' }}>
+            {/* ------------------------------------------------------------- */}
+            {/* VISTA 1: TIENDAS Y PRODUCTOS */}
+            {/* ------------------------------------------------------------- */}
+            {vistaActiva === 'tiendas' && (
+                <div>
                     {!tiendaSeleccionada ? (
                         <div>
                             <h3 style={{ marginTop: 0 }}>🏪 Selecciona una Tienda</h3>
@@ -293,15 +301,14 @@ function Tienda() {
                                                 key={tienda.usuario_id || tienda.nombre} 
                                                 onClick={() => {
                                                     setTiendaSeleccionada(tienda);
-                                                    if (!estaAbierta) alert(`🔴 La tienda "${tienda.nombre}" está CERRADA en este momento.`);
+                                                    if (!estaAbierta) alert(`🔴 La tienda "${tienda.nombre}" está CERRADA.`);
                                                 }}
                                                 style={{ 
-                                                    border: estaAbierta ? '1px solid #ccc' : '2px solid #dc3545', 
+                                                    border: estaAbierta ? '1px solid #444' : '2px solid #dc3545', 
                                                     padding: '15px', 
-                                                    borderRadius: '8px', 
+                                                    borderRadius: '12px', 
                                                     textAlign: 'center',
                                                     cursor: 'pointer',
-                                                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                                                     opacity: estaAbierta ? 1 : 0.75,
                                                     position: 'relative'
                                                 }}
@@ -312,7 +319,6 @@ function Tienda() {
                                                     </span>
                                                 )}
 
-                                                {/* 🖼️ LOGO CON MANEJADOR onError PARA EVITAR TEXTO ROTO */}
                                                 <img 
                                                     src={tienda.logo_url ? `${API_URL}${tienda.logo_url}` : LOGO_DEFAULT} 
                                                     alt={tienda.nombre} 
@@ -320,14 +326,11 @@ function Tienda() {
                                                     style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', marginBottom: '10px', border: estaAbierta ? '2px solid #007bff' : '2px solid #dc3545' }} 
                                                 />
                                                 <h4 style={{ margin: '5px 0' }}>{tienda.nombre}</h4>
-                                                <p style={{ margin: '0 0 5px 0', fontSize: '12px', color: '#666', height: '32px', overflow: 'hidden' }}>{tienda.descripcion || 'Sin descripción'}</p>
-                                                
-                                                <p style={{ margin: '2px 0 8px 0', fontSize: '11px' }}>
-                                                    📍 {dirTienda.texto}
-                                                </p>
+                                                <p style={{ margin: '0 0 5px 0', fontSize: '12px', color: '#888', height: '32px', overflow: 'hidden' }}>{tienda.descripcion || 'Sin descripción'}</p>
+                                                <p style={{ margin: '2px 0 10px 0', fontSize: '11px' }}>📍 {dirTienda.texto}</p>
 
-                                                <button style={{ width: '100%', padding: '8px', backgroundColor: estaAbierta ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                                    {estaAbierta ? 'Entrar a la tienda' : 'Ver productos (Cerrado)'}
+                                                <button style={{ width: '100%', padding: '8px', backgroundColor: estaAbierta ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                                    {estaAbierta ? 'Entrar a la tienda' : 'Ver catálogo (Cerrado)'}
                                                 </button>
                                             </div>
                                         );
@@ -339,21 +342,21 @@ function Tienda() {
                         <div>
                             <button 
                                 onClick={() => setTiendaSeleccionada(null)} 
-                                style={{ padding: '8px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}
+                                style={{ padding: '8px 15px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginBottom: '15px' }}
                             >
                                 ← Volver a las Tiendas
                             </button>
 
                             {!esTiendaAbierta(tiendaSeleccionada) && (
-                                <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #f5c6cb', fontWeight: 'bold', textAlign: 'center' }}>
-                                    🔴 ESTA TIENDA ESTÁ CERRADA EN ESTE MOMENTO. No se pueden realizar pedidos por el día de hoy.
+                                <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', textAlign: 'center' }}>
+                                    🔴 ESTA TIENDA ESTÁ CERRADA EN ESTE MOMENTO.
                                 </div>
                             )}
 
                             {(() => {
                                 const dirTienda = parseDireccion(tiendaSeleccionada.direccion);
                                 return (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #ddd' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #444' }}>
                                         <img 
                                             src={tiendaSeleccionada.logo_url ? `${API_URL}${tiendaSeleccionada.logo_url}` : LOGO_DEFAULT} 
                                             alt="Logo Tienda" 
@@ -362,194 +365,320 @@ function Tienda() {
                                         />
                                         <div>
                                             <h3 style={{ margin: 0 }}>{tiendaSeleccionada.nombre} {!esTiendaAbierta(tiendaSeleccionada) && <span style={{ color: '#dc3545', fontSize: '14px' }}>(🔴 Cerrado)</span>}</h3>
-                                            <p style={{ margin: '2px 0', fontSize: '13px', color: '#555' }}>{tiendaSeleccionada.descripcion}</p>
-                                            <p style={{ margin: '2px 0', fontSize: '12px' }}>
-                                                📍 <strong>Dirección:</strong> {dirTienda.texto}
-                                            </p>
-                                            {dirTienda.gps && (
-                                                <a href={dirTienda.gps} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '4px', color: '#007bff', fontSize: '12px', fontWeight: 'bold' }}>
-                                                    🗺️ Ver ubicación de la tienda en Google Maps
-                                                </a>
-                                            )}
+                                            <p style={{ margin: '2px 0', fontSize: '13px', color: '#aaa' }}>{tiendaSeleccionada.descripcion}</p>
+                                            <p style={{ margin: '2px 0', fontSize: '12px' }}>📍 <strong>Dirección:</strong> {dirTienda.texto}</p>
                                         </div>
                                     </div>
                                 );
                             })()}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
                                 {productosDeTienda.length > 0 ? (
                                     productosDeTienda.map(prod => {
                                         const estaDisponible = prod.disponible && esTiendaAbierta(tiendaSeleccionada);
                                         return (
-                                            <div key={prod.id} style={{ opacity: estaDisponible ? 1 : 0.6, border: '1px solid #ccc', padding: '15px', borderRadius: '8px' }}>
+                                            <div key={prod.id} style={{ opacity: estaDisponible ? 1 : 0.6, border: '1px solid #444', padding: '12px', borderRadius: '8px' }}>
                                                 <img 
                                                     src={prod.imagen ? `${API_URL}${prod.imagen}` : PROD_DEFAULT} 
                                                     alt={prod.nombre} 
                                                     onError={(e) => { e.target.onerror = null; e.target.src = PROD_DEFAULT; }}
-                                                    style={{ width: '100%', height: '130px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px' }} 
+                                                    style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', marginBottom: '10px' }} 
                                                 />
-                                                
                                                 <h4 style={{ margin: '0 0 5px 0' }}>{prod.nombre}</h4>
-
-                                                <p style={{ margin: '0 0 15px 0', fontWeight: 'bold', color: estaDisponible ? '#28a745' : '#dc3545', fontSize: '18px' }}>
-                                                    {estaDisponible ? `$${Number(prod.precio).toLocaleString()}` : !prod.disponible ? '¡AGOTADO!' : 'TIENDA CERRADA'}
+                                                <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: estaDisponible ? '#28a745' : '#dc3545', fontSize: '16px' }}>
+                                                    {estaDisponible ? `$${Number(prod.precio).toLocaleString()}` : !prod.disponible ? 'AGOTADO' : 'CERRADO'}
                                                 </p>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <input type="number" min="1" value={cantidades[prod.id] || 1} onChange={(e) => handleCantidadChange(prod.id, e.target.value)} disabled={!estaDisponible} style={{ width: '50px', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center' }} />
-                                                    <button onClick={() => agregarAlCarrito(prod)} disabled={!estaDisponible} style={{ flex: 1, padding: '10px', backgroundColor: estaDisponible ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: estaDisponible ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}>
-                                                        {estaDisponible ? 'Agregar' : 'No disp.'}
+                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                    <input type="number" min="1" value={cantidades[prod.id] || 1} onChange={(e) => handleCantidadChange(prod.id, e.target.value)} disabled={!estaDisponible} style={{ width: '45px', padding: '6px', borderRadius: '4px', border: '1px solid #666', textAlign: 'center' }} />
+                                                    <button onClick={() => agregarAlCarrito(prod)} disabled={!estaDisponible} style={{ flex: 1, padding: '8px', backgroundColor: estaDisponible ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: estaDisponible ? 'pointer' : 'not-allowed', fontWeight: 'bold', fontSize: '13px' }}>
+                                                        {estaDisponible ? 'Agregar' : 'N/A'}
                                                     </button>
                                                 </div>
                                             </div>
                                         );
                                     })
                                 ) : (
-                                    <p style={{ gridColumn: '1 / -1', color: '#666', textAlign: 'center', padding: '20px' }}>Esta tienda aún no tiene productos publicados.</p>
+                                    <p style={{ gridColumn: '1 / -1', color: '#888', textAlign: 'center', padding: '20px' }}>Esta tienda aún no tiene productos disponibles.</p>
                                 )}
                             </div>
                         </div>
                     )}
-                </div>
-                
-                <div style={{ flex: '1 1 30%', minWidth: '300px', border: '1px solid #eee', padding: '20px', borderRadius: '8px', height: 'fit-content' }}>
-                    <h3 style={{ marginTop: 0 }}>Tu Carrito 🛒</h3>
-                    {carrito.length === 0 ? (
-                        <p style={{ color: '#888', fontSize: '14px' }}>El carrito está vacío.</p>
-                    ) : (
-                        carrito.map((item, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '10px' }}>
-                                <div>
-                                    <strong style={{ display: 'block' }}>{item.cantidad}x {item.nombre}</strong>
-                                    <span style={{ fontSize: '12px' }}>${item.subtotal.toLocaleString()}</span>
-                                </div>
-                                <button onClick={() => eliminarDelCarrito(item.id)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', width: '32px', height: '32px', cursor: 'pointer' }}>❌</button>
-                            </div>
-                        ))
-                    )}
-                    
-                    <div style={{ borderTop: '2px solid #eee', paddingTop: '15px' }}>
-                        <p style={{ margin: '5px 0', fontSize: '16px' }}>Subtotal: <strong style={{ float: 'right' }}>${subtotalCarrito.toLocaleString()}</strong></p>
-                        <p style={{ margin: '5px 0', fontSize: '16px', color: '#17a2b8' }}>Domicilio: <strong style={{ float: 'right' }}>${costoDomicilio.toLocaleString()}</strong></p>
-                        <h3 style={{ margin: '10px 0 0 0', color: '#28a745', fontSize: '22px' }}>Total a Pagar: <span style={{ float: 'right' }}>${totalFinal.toLocaleString()}</span></h3>
-                    </div>
-                    
-                    <div style={{ padding: '15px', borderRadius: '6px', marginBottom: '15px', marginTop: '15px', border: '1px solid #ddd' }}>
-                        <strong style={{ display: 'block', marginBottom: '8px' }}>📍 Destino de entrega:</strong>
-                        <textarea value={direccionManual} onChange={(e) => {setDireccionManual(e.target.value); if(!e.target.value.startsWith('http')) setCostoDomicilio(esEmpresa?0:4000);}} placeholder={esEmpresa ? "Detalles de entrega..." : "Detalles de entrega (Tarifa base $4,000)"} style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical', minHeight: '60px', boxSizing: 'border-box' }} />
-                        
-                        {linkGPS ? (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#d4edda', padding: '10px', borderRadius: '4px', marginTop: '10px' }}><span style={{ color: '#155724', fontWeight: 'bold' }}>✅ GPS Añadido</span><button onClick={() => {setLinkGPS(''); setCostoDomicilio(esEmpresa?0:4000);}} style={{ background: 'none', border: 'none', color: '#721c24', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}>Quitar</button></div>
-                        ) : (
-                            <button onClick={obtenerUbicacion} style={{ width: '100%', padding: '10px', marginTop: '10px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🗺️ Adjuntar mi GPS</button>
-                        )}
-                    </div>
-
-                    <strong style={{ display: 'block', marginBottom: '8px' }}>💳 Método de Pago:</strong>
-                    
-                    <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} style={{ padding: '10px', width: '100%', marginBottom: '10px', borderRadius: '4px', border: '1px solid #007bff', fontWeight: 'bold', color: '#007bff' }}>
-                        {bancos.map(b => (
-                            <option key={b.id} value={b.nombre}>Pago con {b.nombre}</option>
-                        ))}
-                        <option value="efectivo">Pago en Efectivo</option>
-                    </select>
-
-                    {metodoPago !== 'efectivo' && bancoSeleccionado && (
-                        <div style={{ backgroundColor: '#e2f3f5', padding: '12px', borderRadius: '6px', marginBottom: '15px', border: '1px solid #17a2b8' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
-                                {bancoSeleccionado.imagen ? (
-                                    <img src={bancoSeleccionado.imagen} alt="Banco" style={{ height: '35px', width: '35px', borderRadius: '4px', objectFit: 'contain', backgroundColor: 'white', border: '1px solid #ccc', padding: '2px' }} />
-                                ) : (
-                                    <span style={{ fontSize: '25px' }}>🏦</span>
-                                )}
-                                <div>
-                                    <span style={{ display: 'block', fontSize: '13px', color: '#0c5460' }}>Transfiere a <strong>{bancoSeleccionado.nombre}</strong>:</span>
-                                    <strong style={{ fontSize: '16px', color: '#0c5460' }}>{bancoSeleccionado.numero}</strong>
-                                </div>
-                            </div>
-                            <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#0c5460', marginBottom: '4px' }}>
-                                Nº de Referencia / Comprobante:
-                            </label>
-                            <input 
-                                type="text" 
-                                value={referenciaPago} 
-                                onChange={(e) => setReferenciaPago(e.target.value)} 
-                                placeholder="Ej: 123456789" 
-                                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #17a2b8', boxSizing: 'border-box' }} 
-                            />
-                        </div>
-                    )}
-                    
-                    <button onClick={hacerPedido} style={{ width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Confirmar Pedido (${totalFinal.toLocaleString()})</button>
-                </div>
-            </div>
-            
-            <hr style={{ margin: '30px 0', borderColor: '#eee' }} />
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer' }} onClick={() => setMostrarPedidos(!mostrarPedidos)}>
-                <h3 style={{ margin: 0 }}>Tus Pedidos Realizados 📦</h3><span style={{ fontSize: '20px', fontWeight: 'bold', color: '#007bff' }}>{mostrarPedidos ? 'Ocultar 🔼' : 'Ver Historial 🔽'}</span>
-            </div>
-
-            {mostrarPedidos && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
-                    {misPedidos.map(pedido => {
-                        const dir = parseDireccion(pedido.direccion);
-                        const enRuta = pedido.estado === 'llevando_tu_pedido';
-                        const cancelado = pedido.estado === 'cancelado_devuelto' || pedido.estado === 'cancelado';
-                        const coordsRepartidor = gpsDomiciliario[pedido.id];
-                        const destinoFinal = miUbicacionCliente || extraerCoordsDeLink(dir.gps);
-
-                        let distanciaKm = 0; 
-                        let tiempoMinutos = 0;
-                        if (enRuta && coordsRepartidor && destinoFinal) {
-                            distanciaKm = calcularDistancia(coordsRepartidor.lat, coordsRepartidor.lon, destinoFinal.lat, destinoFinal.lon);
-                            tiempoMinutos = Math.max(1, Math.round(distanciaKm * 2)); 
-                        }
-
-                        return (
-                        <div key={pedido.id} style={{ padding: '20px', border: enRuta ? '2px solid #007bff' : (cancelado ? '2px solid #dc3545' : '1px solid #ddd'), borderRadius: '8px' }}>
-                            <strong style={{ fontSize: '18px' }}>Pedido #{pedido.id}</strong> <span style={{ color: '#666', marginLeft: '10px' }}>{new Date(pedido.fecha_creacion).toLocaleString()}</span>
-                            <p style={{ margin: '8px 0 0 0', fontSize: '15px' }}>
-                                Total: <strong>${Number(pedido.total).toLocaleString()}</strong> | Pago: <strong style={{ color: '#007bff' }}>{pedido.metodo_pago.toUpperCase()}</strong>
-                                {pedido.referencia_pago && <span style={{ marginLeft: '10px', fontSize: '13px', color: '#555' }}>(Ref: {pedido.referencia_pago})</span>}
-                            </p>
-
-                            {pedido.metodo_pago !== 'efectivo' && (
-                                <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>
-                                    Estado del Pago: {
-                                        pedido.estado_pago === 'aprobado' ? <strong style={{ color: '#28a745' }}>✅ Pago Aprobado por Admin</strong> :
-                                        pedido.estado_pago === 'rechazado' ? <strong style={{ color: '#dc3545' }}>❌ Pago Rechazado</strong> :
-                                        <strong style={{ color: '#ffc107' }}>⏳ Verificando transferencia con el Admin...</strong>
-                                    }
-                                </p>
-                            )}
-                            
-                            {enRuta && (
-                                <div style={{ marginTop: '15px', backgroundColor: '#e2f3f5', padding: '15px', borderRadius: '6px', border: '1px solid #17a2b8' }}>
-                                    <p style={{ margin: '0 0 10px 0', color: '#0c5460', fontWeight: 'bold', fontSize: '15px', textAlign: 'center' }}>🛵 ¡Tu domiciliario está en camino!</p>
-                                    {coordsRepartidor && destinoFinal ? (
-                                        <>
-                                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', gap: '10px' }}>
-                                                <span style={{ fontSize: '24px' }}>🛵</span>
-                                                <div style={{ flex: 1, height: '6px', backgroundColor: '#17a2b8', borderRadius: '3px', position: 'relative' }}>
-                                                    <div style={{ position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#fff', padding: '2px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #17a2b8', color: '#17a2b8' }}>{distanciaKm.toFixed(1)} km</div>
-                                                </div>
-                                                <span style={{ fontSize: '24px' }}>🏠</span>
-                                            </div>
-                                            <p style={{ margin: '0 0 10px 0', textAlign: 'center', fontSize: '14px', fontWeight: 'bold', color: '#0c5460' }}>⏳ Llegada estimada: {tiempoMinutos} min</p>
-                                            <a href={`https://www.google.com/maps/dir/?api=1&origin=${coordsRepartidor.lat},${coordsRepartidor.lon}&destination=${destinoFinal.lat},${destinoFinal.lon}&travelmode=driving`} target="_blank" rel="noreferrer" style={{ display: 'block', backgroundColor: '#17a2b8', color: 'white', padding: '10px 15px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>🗺️ Abrir ruta en Google Maps</a>
-                                        </>
-                                    ) : (
-                                        <p style={{ margin: '0 0 10px 0', textAlign: 'center', fontSize: '14px', color: '#17a2b8', fontWeight: 'bold' }}>📡 Conectando con la moto...</p>
-                                    )}
-                                </div>
-                            )}
-                            <div style={{ marginTop: '15px', backgroundColor: enRuta ? '#007bff' : (cancelado ? '#dc3545' : '#6c757d'), color: 'white', padding: '8px 20px', borderRadius: '25px', fontWeight: 'bold', textAlign: 'center', fontSize: '14px', width: 'fit-content' }}>
-                                {pedido.estado.replace('_', ' ').toUpperCase()}
-                            </div>
-                        </div>
-                    )})}
                 </div>
             )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* VISTA 2: CARRITO DE COMPRAS Y PROCESO DE PAGO */}
+            {/* ------------------------------------------------------------- */}
+            {vistaActiva === 'carrito' && (
+                <div>
+                    <h3 style={{ marginTop: 0 }}>🛒 Tu Carrito de Compras</h3>
+                    {carrito.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '40px 10px' }}>
+                            <span style={{ fontSize: '50px', display: 'block', marginBottom: '10px' }}>🛒</span>
+                            <p style={{ color: '#888' }}>Tu carrito está vacío.</p>
+                            <button onClick={() => setVistaActiva('tiendas')} style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Explorar Tiendas</button>
+                        </div>
+                    ) : (
+                        <div>
+                            {carrito.map((item, i) => (
+                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', border: '1px solid #444', borderRadius: '8px', marginBottom: '10px' }}>
+                                    <div>
+                                        <strong style={{ display: 'block', fontSize: '15px' }}>{item.cantidad}x {item.nombre}</strong>
+                                        <span style={{ fontSize: '13px', color: '#17a2b8' }}>${item.subtotal.toLocaleString()}</span>
+                                    </div>
+                                    <button onClick={() => eliminarDelCarrito(item.id)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', width: '32px', height: '32px', cursor: 'pointer' }}>❌</button>
+                                </div>
+                            ))}
+
+                            <div style={{ borderTop: '2px solid #444', paddingTop: '15px', marginTop: '15px' }}>
+                                <p style={{ margin: '5px 0' }}>Subtotal: <strong style={{ float: 'right' }}>${subtotalCarrito.toLocaleString()}</strong></p>
+                                <p style={{ margin: '5px 0', color: '#17a2b8' }}>Domicilio: <strong style={{ float: 'right' }}>${costoDomicilio.toLocaleString()}</strong></p>
+                                <h3 style={{ margin: '10px 0', color: '#28a745', fontSize: '20px' }}>Total a Pagar: <span style={{ float: 'right' }}>${totalFinal.toLocaleString()}</span></h3>
+                            </div>
+
+                            <div style={{ padding: '15px', borderRadius: '8px', marginBottom: '15px', marginTop: '15px', border: '1px solid #444' }}>
+                                <strong style={{ display: 'block', marginBottom: '8px' }}>📍 Destino de entrega:</strong>
+                                <textarea value={direccionManual} onChange={(e) => {setDireccionManual(e.target.value); if(!e.target.value.startsWith('http')) setCostoDomicilio(esEmpresa?0:4000);}} placeholder={esEmpresa ? "Detalles de entrega..." : "Detalles de entrega (Tarifa base $4,000)"} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #666', resize: 'vertical', minHeight: '60px', boxSizing: 'border-box' }} />
+                                
+                                {linkGPS ? (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#d4edda', padding: '10px', borderRadius: '6px', marginTop: '10px' }}><span style={{ color: '#155724', fontWeight: 'bold' }}>✅ GPS Añadido</span><button onClick={() => {setLinkGPS(''); setCostoDomicilio(esEmpresa?0:4000);}} style={{ background: 'none', border: 'none', color: '#721c24', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}>Quitar</button></div>
+                                ) : (
+                                    <button onClick={obtenerUbicacion} style={{ width: '100%', padding: '10px', marginTop: '10px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>🗺️ Adjuntar mi GPS</button>
+                                )}
+                            </div>
+
+                            <strong style={{ display: 'block', marginBottom: '8px' }}>💳 Método de Pago:</strong>
+                            <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} style={{ padding: '10px', width: '100%', marginBottom: '15px', borderRadius: '6px', border: '1px solid #007bff', fontWeight: 'bold', color: '#007bff' }}>
+                                {bancos.map(b => (
+                                    <option key={b.id} value={b.nombre}>Pago con {b.nombre}</option>
+                                ))}
+                                <option value="efectivo">Pago en Efectivo</option>
+                            </select>
+
+                            {metodoPago !== 'efectivo' && bancoSeleccionado && (
+                                <div style={{ backgroundColor: '#e2f3f5', padding: '12px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #17a2b8' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                                        {bancoSeleccionado.imagen ? (
+                                            <img src={bancoSeleccionado.imagen} alt="Banco" style={{ height: '35px', width: '35px', borderRadius: '4px', objectFit: 'contain', backgroundColor: 'white', padding: '2px' }} />
+                                        ) : (
+                                            <span style={{ fontSize: '25px' }}>🏦</span>
+                                        )}
+                                        <div>
+                                            <span style={{ display: 'block', fontSize: '13px', color: '#0c5460' }}>Transfiere a <strong>{bancoSeleccionado.nombre}</strong>:</span>
+                                            <strong style={{ fontSize: '16px', color: '#0c5460' }}>{bancoSeleccionado.numero}</strong>
+                                        </div>
+                                    </div>
+                                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: '#0c5460', marginBottom: '4px' }}>
+                                        Nº de Referencia / Comprobante:
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={referenciaPago} 
+                                        onChange={(e) => setReferenciaPago(e.target.value)} 
+                                        placeholder="Ej: 123456789" 
+                                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #17a2b8', boxSizing: 'border-box' }} 
+                                    />
+                                </div>
+                            )}
+
+                            <button onClick={hacerPedido} style={{ width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Confirmar Pedido (${totalFinal.toLocaleString()})</button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* VISTA 3: SEGUIMIENTO EN TIEMPO REAL (PEDIDOS ACTIVOS) */}
+            {/* ------------------------------------------------------------- */}
+            {vistaActiva === 'seguimiento' && (
+                <div>
+                    <h3 style={{ marginTop: 0 }}>🛵 Seguimiento de Pedidos en Curso</h3>
+                    {pedidosActivos.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '40px 10px' }}>
+                            <span style={{ fontSize: '50px', display: 'block', marginBottom: '10px' }}>📦</span>
+                            <p style={{ color: '#888' }}>No tienes pedidos activos en este momento.</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            {pedidosActivos.map(pedido => {
+                                const dir = parseDireccion(pedido.direccion);
+                                const enRuta = pedido.estado === 'llevando_tu_pedido';
+                                const coordsRepartidor = gpsDomiciliario[pedido.id];
+                                const destinoFinal = miUbicacionCliente || extraerCoordsDeLink(dir.gps);
+
+                                let distanciaKm = 0; 
+                                let tiempoMinutos = 0;
+                                if (enRuta && coordsRepartidor && destinoFinal) {
+                                    distanciaKm = calcularDistancia(coordsRepartidor.lat, coordsRepartidor.lon, destinoFinal.lat, destinoFinal.lon);
+                                    tiempoMinutos = Math.max(1, Math.round(distanciaKm * 2)); 
+                                }
+
+                                return (
+                                    <div key={pedido.id} style={{ padding: '15px', border: enRuta ? '2px solid #007bff' : '1px solid #444', borderRadius: '10px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <strong style={{ fontSize: '16px' }}>Pedido #{pedido.id}</strong>
+                                            <span style={{ fontSize: '12px', color: '#888' }}>{new Date(pedido.fecha_creacion).toLocaleTimeString()}</span>
+                                        </div>
+
+                                        <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>
+                                            Total: <strong>${Number(pedido.total).toLocaleString()}</strong> | Pago: <strong style={{ color: '#007bff' }}>{pedido.metodo_pago.toUpperCase()}</strong>
+                                        </p>
+
+                                        {enRuta && (
+                                            <div style={{ marginTop: '15px', backgroundColor: '#e2f3f5', padding: '12px', borderRadius: '8px', border: '1px solid #17a2b8' }}>
+                                                <p style={{ margin: '0 0 10px 0', color: '#0c5460', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' }}>🛵 ¡Tu domiciliario está en camino!</p>
+                                                {coordsRepartidor && destinoFinal ? (
+                                                    <>
+                                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', gap: '10px' }}>
+                                                            <span style={{ fontSize: '20px' }}>🛵</span>
+                                                            <div style={{ flex: 1, height: '6px', backgroundColor: '#17a2b8', borderRadius: '3px', position: 'relative' }}>
+                                                                <div style={{ position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#fff', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', border: '1px solid #17a2b8', color: '#17a2b8' }}>{distanciaKm.toFixed(1)} km</div>
+                                                            </div>
+                                                            <span style={{ fontSize: '20px' }}>🏠</span>
+                                                        </div>
+                                                        <p style={{ margin: '0 0 10px 0', textAlign: 'center', fontSize: '13px', fontWeight: 'bold', color: '#0c5460' }}>⏳ Llegada estimada: {tiempoMinutos} min</p>
+                                                        <a href={`https://www.google.com/maps/dir/?api=1&origin=${coordsRepartidor.lat},${coordsRepartidor.lon}&destination=${destinoFinal.lat},${destinoFinal.lon}&travelmode=driving`} target="_blank" rel="noreferrer" style={{ display: 'block', backgroundColor: '#17a2b8', color: 'white', padding: '8px 12px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px', textAlign: 'center' }}>🗺️ Abrir mapa en tiempo real</a>
+                                                    </>
+                                                ) : (
+                                                    <p style={{ margin: 0, textAlign: 'center', fontSize: '13px', color: '#17a2b8', fontWeight: 'bold' }}>📡 Ubicando repartidor...</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div style={{ marginTop: '12px', backgroundColor: enRuta ? '#007bff' : '#6c757d', color: 'white', padding: '6px 15px', borderRadius: '20px', fontWeight: 'bold', textAlign: 'center', fontSize: '12px', width: 'fit-content' }}>
+                                            {pedido.estado.replace('_', ' ').toUpperCase()}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* VISTA 4: HISTORIAL DE COMPRAS */}
+            {/* ------------------------------------------------------------- */}
+            {vistaActiva === 'historial' && (
+                <div>
+                    <h3 style={{ marginTop: 0 }}>📜 Historial de Compras</h3>
+                    {historialPedidos.length === 0 ? (
+                        <p style={{ color: '#888', textAlign: 'center', padding: '30px' }}>Aún no tienes compras finalizadas.</p>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {historialPedidos.map(pedido => {
+                                const cancelado = pedido.estado === 'cancelado' || pedido.estado === 'cancelado_devuelto';
+                                return (
+                                    <div key={pedido.id} style={{ padding: '12px', border: cancelado ? '1px solid #dc3545' : '1px solid #444', borderRadius: '8px', opacity: 0.9 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <strong>Pedido #{pedido.id}</strong>
+                                            <span style={{ fontSize: '12px', color: '#888' }}>{new Date(pedido.fecha_creacion).toLocaleDateString()}</span>
+                                        </div>
+                                        <p style={{ margin: '5px 0 0 0', fontSize: '13px' }}>
+                                            Total: <strong>${Number(pedido.total).toLocaleString()}</strong> | Pago: {pedido.metodo_pago.toUpperCase()}
+                                        </p>
+                                        <div style={{ marginTop: '8px', backgroundColor: cancelado ? '#dc3545' : '#28a745', color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', width: 'fit-content' }}>
+                                            {pedido.estado.replace('_', ' ').toUpperCase()}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* 🔔 NOTIFICACIÓN FLOTANTE CUANDO HAY ITEMS EN EL CARRITO */}
+            {/* ------------------------------------------------------------- */}
+            {carrito.length > 0 && vistaActiva !== 'carrito' && (
+                <div 
+                    onClick={() => setVistaActiva('carrito')}
+                    style={{
+                        position: 'fixed',
+                        bottom: '75px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '90%',
+                        maxWidth: '500px',
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        padding: '12px 20px',
+                        borderRadius: '30px',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        justify: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        zIndex: 999,
+                        fontWeight: 'bold'
+                    }}
+                >
+                    <span>🛒 {carrito.length} producto(s) (${totalFinal.toLocaleString()})</span>
+                    <span>Ver Carrito ➔</span>
+                </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* 📱 BARRA NAVEGACIÓN INFERIOR ESTILO APP (BOTTOM BAR) */}
+            {/* ------------------------------------------------------------- */}
+            <div style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: '#1e1e2f',
+                borderTop: '1px solid #333',
+                display: 'flex',
+                justify: 'space-around',
+                padding: '8px 0',
+                zIndex: 1000
+            }}>
+                {/* BOTÓN TIENDAS */}
+                <button 
+                    onClick={() => setVistaActiva('tiendas')}
+                    style={{ background: 'none', border: 'none', color: vistaActiva === 'tiendas' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'tiendas' ? 'bold' : 'normal' }}
+                >
+                    <span style={{ fontSize: '20px' }}>🏪</span>
+                    Tiendas
+                </button>
+
+                {/* BOTÓN CARRITO */}
+                <button 
+                    onClick={() => setVistaActiva('carrito')}
+                    style={{ background: 'none', border: 'none', color: vistaActiva === 'carrito' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'carrito' ? 'bold' : 'normal', position: 'relative' }}
+                >
+                    <span style={{ fontSize: '20px' }}>🛒</span>
+                    Carrito
+                    {carrito.length > 0 && (
+                        <span style={{ position: 'absolute', top: '-2px', right: '12px', backgroundColor: '#dc3545', color: 'white', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
+                            {carrito.length}
+                        </span>
+                    )}
+                </button>
+
+                {/* BOTÓN SEGUIMIENTO */}
+                <button 
+                    onClick={() => setVistaActiva('seguimiento')}
+                    style={{ background: 'none', border: 'none', color: vistaActiva === 'seguimiento' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'seguimiento' ? 'bold' : 'normal', position: 'relative' }}
+                >
+                    <span style={{ fontSize: '20px' }}>🛵</span>
+                    Seguimiento
+                    {pedidosActivos.length > 0 && (
+                        <span style={{ position: 'absolute', top: '-2px', right: '12px', backgroundColor: '#17a2b8', borderRadius: '50%', width: '8px', height: '8px' }}></span>
+                    )}
+                </button>
+
+                {/* BOTÓN HISTORIAL */}
+                <button 
+                    onClick={() => setVistaActiva('historial')}
+                    style={{ background: 'none', border: 'none', color: vistaActiva === 'historial' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'historial' ? 'bold' : 'normal' }}
+                >
+                    <span style={{ fontSize: '20px' }}>📜</span>
+                    Historial
+                </button>
+            </div>
+
         </div>
     );
 }
