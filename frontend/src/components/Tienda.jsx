@@ -236,8 +236,6 @@ function Tienda() {
             alert('🚀 ¡Pedido enviado exitosamente!'); 
             setCarrito([]); 
             setReferenciaPago('');
-            
-            // 🚀 REDIRECCIÓN A SEGUIMIENTO
             setVistaActiva('seguimiento'); 
 
             axios.get(`${API_URL}/api/pedidos/cliente/${usuarioInfo.id}`).then(res => setMisPedidos(res.data));
@@ -268,10 +266,25 @@ function Tienda() {
     return (
         <div style={{ padding: '15px', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', paddingBottom: '120px', minHeight: '100vh' }}>
             
-            {/* ENCABEZADO SUPERIOR */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '12px' }}>
+            {/* 📌 ENCABEZADO SUPERIOR FIJO (STICKY HEADER) */}
+            <div style={{ 
+                position: 'sticky', 
+                top: 0, 
+                zIndex: 900, 
+                backgroundColor: '#1a1a2e', 
+                padding: '12px 15px', 
+                marginTop: '-15px', 
+                marginLeft: '-15px', 
+                marginRight: '-15px', 
+                marginBottom: '20px', 
+                borderBottom: '1px solid #333', 
+                display: 'flex', 
+                justify: 'space-between', 
+                alignItems: 'center',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+            }}>
                 <div>
-                    <h3 style={{ margin: 0, fontSize: '18px' }}>Hola, {usuarioInfo.nombre} 🥐</h3>
+                    <h3 style={{ margin: 0, fontSize: '18px', color: '#ffffff' }}>Hola, {usuarioInfo.nombre} 🥐</h3>
                     {esEmpresa && <span style={{ fontSize: '12px', color: '#17a2b8', fontWeight: 'bold' }}>🏢 Cuenta Empresa</span>}
                 </div>
                 
@@ -620,7 +633,7 @@ function Tienda() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* 📱 BARRA FLOTANTE CON INSIGNIAS NUMÉRICAS DINÁMICAS */}
+            {/* 📱 BARRA FLOTANTE CENTRADA CON INSIGNIAS NUMÉRICAS DINÁMICAS */}
             {/* ------------------------------------------------------------- */}
             <div style={{
                 position: 'fixed',
