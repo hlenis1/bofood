@@ -237,7 +237,7 @@ function Tienda() {
             setCarrito([]); 
             setReferenciaPago('');
             
-            // 🚀 CAMBIO AUTOMÁTICO A LA PESTAÑA DE SEGUIMIENTO
+            // 🚀 REDIRECCIÓN A SEGUIMIENTO
             setVistaActiva('seguimiento'); 
 
             axios.get(`${API_URL}/api/pedidos/cliente/${usuarioInfo.id}`).then(res => setMisPedidos(res.data));
@@ -266,7 +266,7 @@ function Tienda() {
     const historialPedidos = misPedidos.filter(p => p.estado === 'entregado' || p.estado === 'cancelado' || p.estado === 'cancelado_devuelto');
 
     return (
-        <div style={{ padding: '15px', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', paddingBottom: '110px', minHeight: '100vh' }}>
+        <div style={{ padding: '15px', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', paddingBottom: '120px', minHeight: '100vh' }}>
             
             {/* ENCABEZADO SUPERIOR */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '12px' }}>
@@ -596,16 +596,16 @@ function Tienda() {
                     onClick={() => setVistaActiva('carrito')}
                     style={{
                         position: 'fixed',
-                        bottom: '75px',
+                        bottom: '85px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        width: '90%',
+                        width: '85%',
                         maxWidth: '500px',
                         backgroundColor: '#28a745',
                         color: 'white',
                         padding: '12px 20px',
                         borderRadius: '30px',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
                         display: 'flex',
                         justify: 'space-between',
                         alignItems: 'center',
@@ -615,66 +615,73 @@ function Tienda() {
                     }}
                 >
                     <span>🛒 {carrito.length} producto(s) (${totalFinal.toLocaleString()})</span>
-                    <span>Ver Carrito ➔</span>
+                    <span>Ir al Carrito ➔</span>
                 </div>
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* 📱 BARRA NAVEGACIÓN INFERIOR ESTILO APP (BOTTOM BAR) */}
+            {/* 📱 BARRA FLOTANTE CON INSIGNIAS NUMÉRICAS DINÁMICAS */}
             {/* ------------------------------------------------------------- */}
             <div style={{
                 position: 'fixed',
-                bottom: 0,
-                left: 0,
-                right: 0,
+                bottom: '12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '92%',
+                maxWidth: '600px',
                 backgroundColor: '#1e1e2f',
-                borderTop: '1px solid #333',
+                border: '1px solid #333',
+                borderRadius: '25px',
+                boxShadow: '0 8px 25px rgba(0,0,0,0.5)',
                 display: 'flex',
                 justify: 'space-around',
+                alignItems: 'center',
                 padding: '8px 0',
                 zIndex: 1000
             }}>
-                {/* BOTÓN TIENDAS */}
+                {/* BOTÓN 1: TIENDAS */}
                 <button 
                     onClick={() => setVistaActiva('tiendas')}
-                    style={{ background: 'none', border: 'none', color: vistaActiva === 'tiendas' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'tiendas' ? 'bold' : 'normal' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'tiendas' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'tiendas' ? 'bold' : 'normal', transition: 'all 0.2s' }}
                 >
-                    <span style={{ fontSize: '20px' }}>🏪</span>
+                    <span style={{ fontSize: '20px', marginBottom: '2px' }}>🏪</span>
                     Tiendas
                 </button>
 
-                {/* BOTÓN CARRITO */}
+                {/* BOTÓN 2: CARRITO CON INSIGNIA NUMÉRICA */}
                 <button 
                     onClick={() => setVistaActiva('carrito')}
-                    style={{ background: 'none', border: 'none', color: vistaActiva === 'carrito' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'carrito' ? 'bold' : 'normal', position: 'relative' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'carrito' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'carrito' ? 'bold' : 'normal', position: 'relative', transition: 'all 0.2s' }}
                 >
-                    <span style={{ fontSize: '20px' }}>🛒</span>
+                    <span style={{ fontSize: '20px', marginBottom: '2px' }}>🛒</span>
                     Carrito
                     {carrito.length > 0 && (
-                        <span style={{ position: 'absolute', top: '-2px', right: '12px', backgroundColor: '#dc3545', color: 'white', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
+                        <span style={{ position: 'absolute', top: '-2px', right: '22%', backgroundColor: '#dc3545', color: 'white', borderRadius: '50%', width: '17px', height: '17px', fontSize: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
                             {carrito.length}
                         </span>
                     )}
                 </button>
 
-                {/* BOTÓN SEGUIMIENTO */}
+                {/* BOTÓN 3: SEGUIMIENTO CON INSIGNIA NUMÉRICA DE PEDIDOS PENDIENTES */}
                 <button 
                     onClick={() => setVistaActiva('seguimiento')}
-                    style={{ background: 'none', border: 'none', color: vistaActiva === 'seguimiento' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'seguimiento' ? 'bold' : 'normal', position: 'relative' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'seguimiento' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'seguimiento' ? 'bold' : 'normal', position: 'relative', transition: 'all 0.2s' }}
                 >
-                    <span style={{ fontSize: '20px' }}>🛵</span>
+                    <span style={{ fontSize: '20px', marginBottom: '2px' }}>🛵</span>
                     Seguimiento
                     {pedidosActivos.length > 0 && (
-                        <span style={{ position: 'absolute', top: '-2px', right: '12px', backgroundColor: '#17a2b8', borderRadius: '50%', width: '8px', height: '8px' }}></span>
+                        <span style={{ position: 'absolute', top: '-2px', right: '22%', backgroundColor: '#17a2b8', color: 'white', borderRadius: '50%', width: '17px', height: '17px', fontSize: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
+                            {pedidosActivos.length}
+                        </span>
                     )}
                 </button>
 
-                {/* BOTÓN HISTORIAL */}
+                {/* BOTÓN 4: HISTORIAL */}
                 <button 
                     onClick={() => setVistaActiva('historial')}
-                    style={{ background: 'none', border: 'none', color: vistaActiva === 'historial' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'historial' ? 'bold' : 'normal' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'historial' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'historial' ? 'bold' : 'normal', transition: 'all 0.2s' }}
                 >
-                    <span style={{ fontSize: '20px' }}>📜</span>
+                    <span style={{ fontSize: '20px', marginBottom: '2px' }}>📜</span>
                     Historial
                 </button>
             </div>
