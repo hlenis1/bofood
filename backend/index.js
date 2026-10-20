@@ -52,7 +52,6 @@ app.use('/uploads', express.static(uploadDir, {
 const ejecutarParche = async () => {
     const queries = [
         "ALTER TABLE usuarios MODIFY COLUMN rol VARCHAR(50) DEFAULT 'cliente'",
-        "ALTER TABLE pedidos ADD COLUMN chat TEXT DEFAULT '[]'", //anadido
         "ALTER TABLE pedidos MODIFY COLUMN estado VARCHAR(50) DEFAULT 'pendiente'",
         "ALTER TABLE usuarios ADD COLUMN saldo DECIMAL(10,2) DEFAULT 0",
         "ALTER TABLE usuarios ADD COLUMN comision_domicilio INT DEFAULT 15",
@@ -72,6 +71,10 @@ const ejecutarParche = async () => {
         "ALTER TABLE pedidos ADD COLUMN referencia_pago VARCHAR(100) DEFAULT ''",
         "ALTER TABLE pedidos ADD COLUMN estado_pago VARCHAR(50) DEFAULT 'pendiente'",
         "ALTER TABLE pedidos ADD COLUMN motivo_cancelacion TEXT DEFAULT NULL",
+        
+        // 💬 COLUMNA PARA PERSISTENCIA DE CHAT CLIENTE <-> DOMICILIARIO
+        "ALTER TABLE pedidos ADD COLUMN chat TEXT DEFAULT '[]'",
+
         `CREATE TABLE IF NOT EXISTS recargas (
             id INT AUTO_INCREMENT PRIMARY KEY, 
             usuario_id INT, 
@@ -145,11 +148,47 @@ ejecutarParche();
 
 app.get('/api/arreglar-bd', async (req, res) => { 
     await ejecutarParche(); 
-    res.json({ success: true, message: "Base de datos parcheada, roles corregidos y rutas de imágenes corregidas con /uploads/." }); 
+    res.json({ success: true, message: "Base de datos parcheada, columna de chat agregada y roles corregidos." }); 
 });
 
 io.on('connection', (socket) => { 
     socket.on('ubicacion_domiciliario', (data) => io.emit('ubicacion_domiciliario', data)); 
+});
+
+// ==========================================
+// 💬 CHAT Y MENSAJES RÁPIDOS EN TIEMPO REAL
+// ==========================================
+
+app.post('/api/pedidos/:id/mensaje', async (req, res) => {
+    const { emisor, texto } = req.body;
+    try {
+        const [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
+        if (!ped.length) return res.status(404).json({ message: 'Pedido no encontrado' });
+
+        let chat = [];
+        try { 
+            chat = typeof ped[0].chat === 'string' ? JSON.parse(ped[0].chat || '[]') : (ped[0].chat || []); 
+        } catch(e) { 
+            chat = []; 
+        }
+
+        const nuevoMsg = {
+            emisor, // 'cliente' | 'domiciliario'
+            texto,
+            fecha: new Date()
+        };
+        chat.push(nuevoMsg);
+
+        await db.query('UPDATE pedidos SET chat = ? WHERE id = ?', [JSON.stringify(chat), req.params.id]);
+
+        // Retransmisión por WebSockets en tiempo real
+        io.emit('nuevo_mensaje_pedido', { pedidoId: Number(req.params.id), chatCompleto: chat });
+
+        res.json({ success: true, chat });
+    } catch (e) {
+        console.error("Error al procesar mensaje de chat:", e);
+        res.status(500).json({ error: 'Error interno al enviar mensaje' });
+    }
 });
 
 // ==========================================
@@ -313,40 +352,6 @@ app.post('/api/bancos', upload.single('imagen'), async (req, res) => {
 
 app.delete('/api/bancos/:id', async (req, res) => { try { await db.query('DELETE FROM bancos WHERE id = ?', [req.params.id]); res.json({ success: true }); } catch (e) { res.status(500).send('Error'); } });
 
-
-// 💬 ENDPOINT PARA ENVIAR MENSAJES Y ESTADOS RÁPIDOS (CLIENTE <-> DOMICILIARIO)
-app.post('/api/pedidos/:id/mensaje', async (req, res) => {
-    const { emisor, texto } = req.body;
-    try {
-        const [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
-        if (!ped.length) return res.status(404).json({ message: 'Pedido no encontrado' });
-
-        let chat = [];
-        try { chat = JSON.parse(ped[0].chat || '[]'); } catch(e) { chat = []; }
-
-        const nuevoMsg = {
-            emisor, // 'cliente' | 'domiciliario'
-            texto,
-            fecha: new Date()
-        };
-        chat.push(nuevoMsg);
-
-        await db.query('UPDATE pedidos SET chat = ? WHERE id = ?', [JSON.stringify(chat), req.params.id]);
-
-        // Retransmitir por WebSockets a todos los clientes conectados
-        io.emit('nuevo_mensaje_pedido', { pedidoId: Number(req.params.id), chatCompleto: chat });
-        
-        res.json({ success: true, chat });
-    } catch (e) {
-        console.error("Error al enviar mensaje:", e);
-        res.status(500).json({ error: 'Error interno al procesar el mensaje' });
-    }
-});
-
-
-
-
-
 // ==========================================
 // 🛍 PRODUCTOS CON DATOS DE LA TIENDA
 // ==========================================
@@ -439,7 +444,7 @@ app.delete('/api/productos/:id', async (req, res) => {
 });
 
 // ==========================================
-// 📦 LÓGICA DE PEDIDOS CON DIRECCIÓN DE TIENDA Y CLIENTE
+// 📦 LÓGICA DE PEDIDOS CON DIRECCIÓN Y CHAT
 // ==========================================
 
 app.post('/api/pedidos', async (req, res) => {
@@ -465,8 +470,8 @@ app.post('/api/pedidos', async (req, res) => {
         const detallesString = typeof detalles === 'string' ? detalles : JSON.stringify(detalles);
 
         const [r] = await db.query(
-            'INSERT INTO pedidos (usuario_id, total, costo_domicilio, metodo_pago, banco_destino, referencia_pago, estado_pago, detalles, vendedor_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-            [usuario_id, total, costo_domicilio || 0, metodo_pago, banco_destino || '', referencia_pago || '', estadoInicialPago, detallesString, vid]
+            'INSERT INTO pedidos (usuario_id, total, costo_domicilio, metodo_pago, banco_destino, referencia_pago, estado_pago, detalles, vendedor_id, chat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+            [usuario_id, total, costo_domicilio || 0, metodo_pago, banco_destino || '', referencia_pago || '', estadoInicialPago, detallesString, vid, '[]']
         );
         
         const [usr] = await db.query('SELECT nombre, direccion, telefono FROM usuarios WHERE id = ?', [usuario_id]);
@@ -511,6 +516,7 @@ app.post('/api/pedidos', async (req, res) => {
             referencia_pago, 
             estado_pago: estadoInicialPago, 
             detalles: detallesString, 
+            chat: '[]',
             estado: 'pendiente', 
             cliente: usr[0]?.nombre || '', 
             direccion: usr[0]?.direccion || '', 
@@ -817,5 +823,5 @@ app.post('/api/vendedor/tienda', upload.single('logo'), async (req, res) => {
 
 const PORT = 3000;
 server.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo correctamente en el puerto ${PORT} con Tiendas (Admin + Vendedores)`);
+    console.log(`🚀 Servidor corriendo correctamente en el puerto ${PORT}`);
 });
