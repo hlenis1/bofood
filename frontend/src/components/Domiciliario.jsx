@@ -210,7 +210,7 @@ function Domiciliario() {
     const pedidosActivos = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'listo_para_entrega' || (p.estado === 'llevando_tu_pedido' && Number(p.domiciliario_id) === Number(usuarioInfo.id))) : [];
     const historialEntregas = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'entregado' && Number(p.domiciliario_id) === Number(usuarioInfo.id)) : [];
 
-    // ⭐ CÁLCULO DE CALIFICACIÓN PROMEDIO Y RESEÑAS RECIBIDAS DEL REPARTIDOR
+    // ⭐ CÁLCULO DE CALIFICACIÓN PROMEDIO
     const entregadosConCalificacion = historialEntregas.filter(p => p.calificacion_domiciliario !== null && p.calificacion_domiciliario !== undefined);
     const promCalificacionDomi = entregadosConCalificacion.length > 0
         ? entregadosConCalificacion.reduce((acc, p) => acc + Number(p.calificacion_domiciliario), 0) / entregadosConCalificacion.length
@@ -218,134 +218,125 @@ function Domiciliario() {
     const cantCalificacionesDomi = entregadosConCalificacion.length;
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', minHeight: '100vh' }}>
+        <div className="domi-app-wrapper" style={{ padding: '15px 15px 100px 15px', fontFamily: 'sans-serif', maxWidth: '520px', margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box' }}>
             
-            {/* ENCABEZADO CON SALDO Y ESTRELLAS PROMEDIO */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', backgroundColor: '#343a40', padding: '15px', borderRadius: '8px', color: 'white' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0, color: '#e83e8c' }}>🛵 Repartidor</h2>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <BotonModoOscuro />
-                        <button onClick={cerrarSesion} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
-                    </div>
-                </div>
+            {/* 🎨 CSS INYECTADO PARA CORREGIR MODO OSCURO / MODO CLARO EN TODO ELEMENTO */}
+            <style>{`
+                body.dark .domi-card,
+                body.dark-mode .domi-card,
+                body.modo-oscuro .domi-card,
+                [data-theme="dark"] .domi-card {
+                    background-color: #1a1a2e !important;
+                    border-color: #2e2e4a !important;
+                    color: #ffffff !important;
+                }
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#212529', padding: '10px', borderRadius: '6px' }}>
-                        <span style={{ fontSize: '14px' }}>Mi Billetera / Saldo:</span>
-                        <strong style={{ fontSize: '20px', color: miSaldo < 2000 ? '#dc3545' : '#28a745' }}>${miSaldo.toLocaleString()}</strong>
+                body.dark .domi-chip,
+                body.dark-mode .domi-chip,
+                body.modo-oscuro .domi-chip,
+                [data-theme="dark"] .domi-chip {
+                    background-color: #22223b !important;
+                    border-color: #3d3d66 !important;
+                    color: #ffffff !important;
+                }
+
+                body.dark input, body.dark select, body.dark textarea,
+                body.dark-mode input, body.dark-mode select, body.dark-mode textarea,
+                body.modo-oscuro input, body.modo-oscuro select, body.modo-oscuro textarea,
+                [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+                    background-color: #0f0f1a !important;
+                    border-color: #3d3d6b !important;
+                    color: #ffffff !important;
+                }
+
+                body.dark .domi-subcard,
+                body.dark-mode .domi-subcard,
+                body.modo-oscuro .domi-subcard,
+                [data-theme="dark"] .domi-subcard {
+                    background-color: #21213b !important;
+                    border-color: #323254 !important;
+                    color: #ffffff !important;
+                }
+
+                body.dark .domi-box-rating,
+                body.dark-mode .domi-box-rating,
+                body.modo-oscuro .domi-box-rating,
+                [data-theme="dark"] .domi-box-rating {
+                    background-color: #3d3215 !important;
+                    border-color: #ffc107 !important;
+                    color: #fff3cd !important;
+                }
+
+                body.dark .domi-dock,
+                body.dark-mode .domi-dock,
+                body.modo-oscuro .domi-dock,
+                [data-theme="dark"] .domi-dock {
+                    background-color: #121224 !important;
+                    border-color: #2e2e4a !important;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.6) !important;
+                }
+            `}</style>
+
+            {/* 🏷️ BARRITA DE SALUDO Y MODO OSCURO */}
+            <div className="domi-chip" style={{
+                display: 'flex',
+                justify: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'var(--bg-chip, #f0f2f5)',
+                border: '1px solid var(--border-color, #e0e0e0)',
+                padding: '8px 16px',
+                borderRadius: '25px',
+                marginBottom: '15px',
+                fontSize: '14px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                    <span>Hola, {usuarioInfo?.nombre || 'Repartidor'} 🛵☀️</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <BotonModoOscuro />
+                    <button onClick={cerrarSesion} style={{ padding: '5px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '15px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
+                        Salir
+                    </button>
+                </div>
+            </div>
+
+            {/* 🏪 TARJETA CENTRADA PRINCIPAL DE REPARTIDOR */}
+            <div className="domi-card" style={{
+                backgroundColor: 'var(--card-bg, #ffffff)',
+                border: '1px solid var(--border-color, #e0e0e0)',
+                borderRadius: '16px',
+                padding: '20px',
+                textAlign: 'center',
+                marginBottom: '15px',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.06)'
+            }}>
+                <h2 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: 'bold', color: '#e83e8c' }}>
+                    🛵 Portal de Repartidor
+                </h2>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="domi-subcard" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '12px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '2px' }}>Mi Saldo Billetera:</span>
+                        <strong style={{ fontSize: '16px', color: miSaldo < 2000 ? '#dc3545' : '#28a745' }}>${miSaldo.toLocaleString()}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#212529', padding: '10px', borderRadius: '6px' }}>
-                        <span style={{ fontSize: '14px' }}>⭐ Calificación Repartidor:</span>
-                        <strong style={{ fontSize: '16px', color: '#ffc107' }}>
-                            {promCalificacionDomi > 0 ? `⭐ ${promCalificacionDomi.toFixed(1)} / 5.0 (${cantCalificacionesDomi})` : 'Sin calificaciones'}
+
+                    <div className="domi-subcard" style={{ backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '12px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '2px' }}>⭐ Calificación:</span>
+                        <strong style={{ fontSize: '15px', color: '#ffc107' }}>
+                            {promCalificacionDomi > 0 ? `⭐ ${promCalificacionDomi.toFixed(1)} (${cantCalificacionesDomi})` : 'Sin reseñas'}
                         </strong>
                     </div>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <button onClick={() => setVistaActiva('pedidos')} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'pedidos' ? '#007bff' : '#ddd', color: vistaActiva === 'pedidos' ? 'white' : '#333', cursor: 'pointer' }}>📦 Entregas Activas</button>
-                <button onClick={() => setVistaActiva('billetera')} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'billetera' ? '#28a745' : '#ddd', color: vistaActiva === 'billetera' ? 'white' : '#333', cursor: 'pointer' }}>💰 Billetera y Reseñas</button>
-            </div>
-
-            {vistaActiva === 'billetera' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                        <h3 style={{ marginTop: 0, color: '#28a745' }}>Recargar Saldo</h3>
-                        <p style={{ fontSize: '14px' }}>Transfiere a alguna de estas cuentas y reporta tu comprobante.</p>
-                        
-                        {bancos.length > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
-                                {bancos.map(b => (
-                                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '15px', backgroundColor: '#e2f3f5', padding: '10px', borderRadius: '6px', border: '1px solid #17a2b8' }}>
-                                        {b.imagen ? <img src={b.imagen} alt="Banco" style={{ height: '35px', width: '35px', borderRadius: '4px', objectFit: 'contain', backgroundColor: 'white', padding: '2px', border: '1px solid #ccc' }} /> : <span style={{ fontSize: '25px' }}>🏦</span>}
-                                        <div>
-                                            <strong style={{ display: 'block', fontSize: '15px', color: '#0c5460' }}>{b.nombre}</strong>
-                                            <span style={{ fontSize: '13px', color: '#0c5460' }}>Cuenta: <strong>{b.numero}</strong></span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p style={{ color: '#dc3545', fontWeight: 'bold', fontSize: '14px', backgroundColor: '#f8d7da', padding: '10px', borderRadius: '4px' }}>
-                                ⚠️ El administrador aún no ha configurado cuentas para recibir pagos.
-                            </p>
-                        )}
-
-                        <form onSubmit={solicitarRecarga} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <select value={formRecarga.banco_destino} onChange={e => setFormRecarga({...formRecarga, banco_destino: e.target.value})} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #007bff', fontWeight: 'bold', color: '#007bff' }}>
-                                <option value="">Selecciona a qué cuenta transferiste...</option>
-                                {bancos.map(b => <option key={b.id} value={b.nombre}>{b.nombre}</option>)}
-                            </select>
-                            
-                            <input type="number" placeholder="Monto transferido (Ej: 10000)" value={formRecarga.monto} onChange={e => setFormRecarga({...formRecarga, monto: e.target.value})} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                            <input type="text" placeholder="Número de Referencia" value={formRecarga.referencia} onChange={e => setFormRecarga({...formRecarga, referencia: e.target.value})} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                            <button type="submit" disabled={bancos.length === 0} style={{ padding: '12px', backgroundColor: bancos.length > 0 ? '#28a745' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: bancos.length > 0 ? 'pointer' : 'not-allowed' }}>Enviar Comprobante</button>
-                        </form>
-                    </div>
-
-                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                        <h3 style={{ marginTop: 0 }}>Mis Recargas Recientes</h3>
-                        {recargas.length === 0 ? <p style={{ fontSize: '14px', color: '#666' }}>No tienes historial de recargas.</p> : (
-                            recargas.slice(0, 5).map(r => (
-                                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', padding: '8px 0', fontSize: '14px' }}>
-                                    <span>Ref: {r.referencia}</span>
-                                    <strong>${Number(r.monto).toLocaleString()}</strong>
-                                    <span style={{ color: r.estado === 'aprobada' ? '#28a745' : r.estado === 'rechazada' ? '#dc3545' : '#ffc107', fontWeight: 'bold' }}>{r.estado.toUpperCase()}</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                        <h3 style={{ marginTop: 0, color: '#007bff' }}>Historial de Ganancias y Reseñas</h3>
-                        {historialEntregas.length === 0 ? <p style={{ fontSize: '14px', color: '#666' }}>Aún no has entregado pedidos.</p> : (
-                            historialEntregas.slice(0, 15).map(p => {
-                                const neto = Number(p.costo_domicilio) - Number(p.comision_cobrada || 0);
-                                const tieneCalificacion = p.calificacion_domiciliario !== null && p.calificacion_domiciliario !== undefined;
-                                return (
-                                <div key={p.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid #eee', padding: '12px 0', fontSize: '14px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                        <strong>Pedido #{p.id}</strong>
-                                        <span style={{ color: '#28a745', fontWeight: 'bold' }}>Ganancia Neta: ${neto.toLocaleString()}</span>
-                                    </div>
-                                    <span style={{ color: '#666', fontSize: '12px', marginBottom: '8px' }}>
-                                        Costo Domicilio: ${Number(p.costo_domicilio).toLocaleString()} | Comisión Plt: -${Number(p.comision_cobrada || 0).toLocaleString()}
-                                    </span>
-
-                                    {/* ⭐ CALIFICACIÓN Y RESEÑA DEL CLIENTE AL REPARTIDOR */}
-                                    <div style={{ backgroundColor: '#fff3cd', padding: '8px 10px', borderRadius: '6px', border: '1px solid #ffeeba' }}>
-                                        <strong style={{ fontSize: '12px', color: '#856404', display: 'block', marginBottom: '2px' }}>
-                                            ⭐ Calificación del Servicio de Entrega:
-                                        </strong>
-                                        {tieneCalificacion ? (
-                                            <div>
-                                                <span style={{ fontSize: '14px', color: '#ffc107', fontWeight: 'bold' }}>
-                                                    {'⭐'.repeat(p.calificacion_domiciliario)} ({p.calificacion_domiciliario}/5)
-                                                </span>
-                                                {p.comentario_calificacion && (
-                                                    <p style={{ margin: '3px 0 0 0', fontSize: '12px', fontStyle: 'italic', color: '#856404' }}>
-                                                        💬 "{p.comentario_calificacion}"
-                                                    </p>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <span style={{ fontSize: '12px', color: '#856404', fontStyle: 'italic' }}>
-                                                ⏳ El cliente aún no ha calificado la entrega.
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            )})
-                        )}
-                    </div>
-                </div>
-            )}
-
+            {/* 📦 PESTAÑA 1: PEDIDOS / ENTREGAS ACTIVAS */}
             {vistaActiva === 'pedidos' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    {pedidosActivos.length === 0 && <p style={{ textAlign: 'center', color: '#666', marginTop: '30px' }}>No hay entregas pendientes.</p>}
+                    {pedidosActivos.length === 0 && (
+                        <div className="domi-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '30px', borderRadius: '14px', textAlign: 'center', opacity: 0.7 }}>
+                            No hay entregas pendientes en este momento. 🛵
+                        </div>
+                    )}
                     
                     {pedidosActivos.map(pedido => {
                         const dirTienda = parseDireccion(pedido.tienda_direccion);
@@ -367,13 +358,13 @@ function Domiciliario() {
                         const estaExpandido = !!pedidosExpandidos[pedido.id];
 
                         return (
-                        <div key={pedido.id} style={{ border: esMiViaje ? '2px solid #007bff' : '1px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                        <div key={pedido.id} className="domi-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: esMiViaje ? '2px solid #007bff' : '1px solid var(--border-color, #e0e0e0)', borderRadius: '14px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
                             
                             {esMiViaje && (
                                 <div style={{ backgroundColor: '#1e2d3d', padding: '10px 15px', borderBottom: '1px solid #17a2b8', display: 'flex', gap: '10px' }}>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); cambiarEstado(pedido.id, 'entregado'); }} 
-                                        style={{ flex: 1, padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}
+                                        style={{ flex: 1, padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' }}
                                     >
                                         ✅ Entregado (Cobrar Comisión)
                                     </button>
@@ -388,7 +379,7 @@ function Domiciliario() {
                                     <div>
                                         <h3 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>Pedido #{pedido.id}</h3>
                                         <p style={{ margin: '2px 0', fontSize: '14px' }}>
-                                            Cobrar al cliente: <strong style={{ color: '#28a745', fontSize: '15px' }}>${Number(pedido.total || 0).toLocaleString()}</strong> ({pedido.metodo_pago ? pedido.metodo_pago.toUpperCase() : 'N/A'})
+                                            Cobrar: <strong style={{ color: '#28a745', fontSize: '15px' }}>${Number(pedido.total || 0).toLocaleString()}</strong> ({pedido.metodo_pago ? pedido.metodo_pago.toUpperCase() : 'N/A'})
                                         </p>
                                         <p style={{ margin: '2px 0', color: '#17a2b8', fontSize: '13px', fontWeight: 'bold' }}>
                                             Pago Domicilio: ${Number(pedido.costo_domicilio || 0).toLocaleString()}
@@ -399,137 +390,80 @@ function Domiciliario() {
                                     </span>
                                 </div>
 
-                                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
+                                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
                                     <span>🏬 <strong>{pedido.tienda_nombre || 'Tienda'}</strong></span>
-                                    <span style={{ color: '#888' }}>➔</span>
+                                    <span style={{ opacity: 0.5 }}>➔</span>
                                     <span>🏠 <strong>{pedido.cliente || 'Cliente'}</strong></span>
                                 </div>
 
-                                <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#007bff', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                                    <span>{estaExpandido ? '▲ Ocultar detalles del viaje' : '▼ Ver detalles y dirección'}</span>
+                                <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#007bff', fontWeight: 'bold' }}>
+                                    {estaExpandido ? '▲ Ocultar detalles del viaje' : '▼ Ver detalles y dirección'}
                                 </div>
                             </div>
 
                             {estaExpandido && (
                                 <div style={{ padding: '15px', borderTop: '1px solid #eee' }}>
                                     
-                                    <div style={{ border: '1px solid #e9ecef', padding: '10px', borderRadius: '6px', marginBottom: '15px' }}>
-                                        <strong style={{ fontSize: '14px', display: 'block', marginBottom: '8px' }}>
+                                    <div className="domi-subcard" style={{ border: '1px solid #e9ecef', padding: '10px', borderRadius: '8px', marginBottom: '12px' }}>
+                                        <strong style={{ fontSize: '13px', display: 'block', marginBottom: '6px' }}>
                                             🛒 Productos ({detallesCarrito.reduce((acc, p) => acc + Number(p.cantidad || 1), 0)} ítems):
                                         </strong>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                             {detallesCarrito.length > 0 ? detallesCarrito.map((prod, idx) => (
                                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                                                    <img src={prod.imagen || 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500'} alt={prod.nombre} style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px' }} />
+                                                    <img src={prod.imagen || 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500'} alt="" style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px' }} />
                                                     <span><strong>{prod.cantidad || 1}x</strong> {prod.nombre}</span>
                                                 </div>
-                                            )) : <span style={{ color: '#999', fontStyle: 'italic', fontSize: '13px' }}>Sin detalles</span>}
+                                            )) : <span style={{ opacity: 0.5, fontStyle: 'italic', fontSize: '12px' }}>Sin detalles</span>}
                                         </div>
                                     </div>
 
-                                    <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffeeba', padding: '12px', borderRadius: '6px', marginBottom: '15px', color: '#856404' }}>
-                                        <strong style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
-                                            🏬 1. Punto de Recogida (Tienda):
+                                    <div style={{ backgroundColor: '#fff3cd', border: '1px solid #ffeeba', padding: '10px', borderRadius: '8px', marginBottom: '12px', color: '#856404' }}>
+                                        <strong style={{ display: 'block', marginBottom: '4px', fontSize: '13px' }}>
+                                            🏬 1. Recogida (Tienda):
                                         </strong>
-                                        <p style={{ margin: '2px 0', fontSize: '14px', fontWeight: 'bold' }}>
-                                            {pedido.tienda_nombre || 'Tienda / Vendedor Principal'}
-                                        </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
-                                            📞 Teléfono Tienda: {pedido.tienda_telefono || 'Sin teléfono'}
-                                        </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
-                                            📍 Dirección Tienda: {dirTienda.texto}
-                                        </p>
+                                        <p style={{ margin: '2px 0', fontSize: '13px', fontWeight: 'bold' }}>{pedido.tienda_nombre || 'Tienda Principal'}</p>
+                                        <p style={{ margin: '2px 0', fontSize: '12px' }}>📞 {pedido.tienda_telefono || 'Sin teléfono'}</p>
+                                        <p style={{ margin: '2px 0', fontSize: '12px' }}>📍 {dirTienda.texto}</p>
 
                                         {dirTienda.gps && esMiViaje && miUbicacion && tiendaCoords ? (
-                                            <a 
-                                                href={`https://www.google.com/maps/dir/?api=1&origin=${miUbicacion.lat},${miUbicacion.lon}&destination=${tiendaCoords.lat},${tiendaCoords.lon}&travelmode=driving`} 
-                                                target="_blank" 
-                                                rel="noreferrer" 
-                                                style={{ display: 'block', marginTop: '10px', backgroundColor: '#ffc107', color: '#212529', textAlign: 'center', padding: '10px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px' }}
-                                            >
-                                                🗺️ Iniciar Navegación en Google Maps (A la Tienda)
+                                            <a href={`https://www.google.com/maps/dir/?api=1&origin=${miUbicacion.lat},${miUbicacion.lon}&destination=${tiendaCoords.lat},${tiendaCoords.lon}&travelmode=driving`} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: '8px', backgroundColor: '#ffc107', color: '#212529', textAlign: 'center', padding: '8px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}>
+                                                🗺️ Ir a la Tienda en Google Maps
                                             </a>
                                         ) : dirTienda.gps ? (
-                                            <a 
-                                                href={dirTienda.gps} 
-                                                target="_blank" 
-                                                rel="noreferrer" 
-                                                style={{ display: 'inline-block', marginTop: '8px', backgroundColor: '#ffc107', color: '#212529', padding: '8px 12px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}
-                                            >
-                                                🗺️ Abrir GPS Tienda en Maps
+                                            <a href={dirTienda.gps} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '6px', backgroundColor: '#ffc107', color: '#212529', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}>
+                                                🗺️ GPS Tienda
                                             </a>
-                                        ) : (
-                                            <span style={{ display: 'block', marginTop: '5px', color: '#dc3545', fontSize: '12px', fontWeight: 'bold' }}>
-                                                ⚠️ La tienda no tiene registrada su ubicación GPS.
-                                            </span>
-                                        )}
+                                        ) : null}
                                     </div>
 
-                                    <div style={{ backgroundColor: '#e9ecef', border: '1px solid #dee2e6', padding: '12px', borderRadius: '6px', marginBottom: '15px', color: '#0c5460' }}>
-                                        <strong style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
-                                            🏠 2. Punto de Entrega (Cliente):
+                                    <div style={{ backgroundColor: '#e2f3f5', border: '1px solid #17a2b8', padding: '10px', borderRadius: '8px', marginBottom: '12px', color: '#0c5460' }}>
+                                        <strong style={{ display: 'block', marginBottom: '4px', fontSize: '13px' }}>
+                                            🏠 2. Entrega (Cliente):
                                         </strong>
-                                        <p style={{ margin: '2px 0', fontSize: '14px', fontWeight: 'bold' }}>
-                                            {pedido.cliente || 'Cliente Desconocido'}
-                                        </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
-                                            📞 Teléfono Cliente: {pedido.telefono || 'Sin teléfono'}
-                                        </p>
-                                        <p style={{ margin: '2px 0', fontSize: '13px' }}>
-                                            📍 Dirección Cliente: {dirCliente.texto}
-                                        </p>
+                                        <p style={{ margin: '2px 0', fontSize: '13px', fontWeight: 'bold' }}>{pedido.cliente || 'Cliente'}</p>
+                                        <p style={{ margin: '2px 0', fontSize: '12px' }}>📞 {pedido.telefono || 'Sin teléfono'}</p>
+                                        <p style={{ margin: '2px 0', fontSize: '12px' }}>📍 {dirCliente.texto}</p>
 
                                         {dirCliente.gps && esMiViaje && miUbicacion && clienteCoords ? (
-                                            <a 
-                                                href={`https://www.google.com/maps/dir/?api=1&origin=${miUbicacion.lat},${miUbicacion.lon}&destination=${clienteCoords.lat},${clienteCoords.lon}&travelmode=driving`} 
-                                                target="_blank" 
-                                                rel="noreferrer" 
-                                                style={{ display: 'block', marginTop: '10px', backgroundColor: '#17a2b8', color: 'white', textAlign: 'center', padding: '10px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px' }}
-                                            >
-                                                🗺️ Iniciar Navegación en Google Maps (Cliente)
+                                            <a href={`https://www.google.com/maps/dir/?api=1&origin=${miUbicacion.lat},${miUbicacion.lon}&destination=${clienteCoords.lat},${clienteCoords.lon}&travelmode=driving`} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: '8px', backgroundColor: '#17a2b8', color: 'white', textAlign: 'center', padding: '8px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}>
+                                                🗺️ Navegar al Cliente en Google Maps
                                             </a>
                                         ) : dirCliente.gps ? (
-                                            <a 
-                                                href={dirCliente.gps} 
-                                                target="_blank" 
-                                                rel="noreferrer" 
-                                                style={{ display: 'inline-block', marginTop: '8px', backgroundColor: '#17a2b8', color: 'white', padding: '8px 12px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}
-                                            >
-                                                🗺️ Abrir GPS Cliente en Maps
+                                            <a href={dirCliente.gps} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '6px', backgroundColor: '#17a2b8', color: 'white', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}>
+                                                🗺️ GPS Cliente
                                             </a>
-                                        ) : (
-                                            <span style={{ display: 'block', marginTop: '5px', color: '#dc3545', fontSize: '12px', fontWeight: 'bold' }}>
-                                                ⚠️ El cliente no registró GPS.
-                                            </span>
-                                        )}
+                                        ) : null}
                                     </div>
-
-                                    {esMiViaje && clienteCoords && miUbicacion && (
-                                        <div style={{ marginBottom: '15px', padding: '15px', backgroundColor: '#e2f3f5', borderRadius: '6px', border: '1px solid #17a2b8' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', gap: '10px' }}>
-                                                <span style={{ fontSize: '24px' }}>🛵</span>
-                                                <div style={{ flex: 1, height: '6px', backgroundColor: '#17a2b8', borderRadius: '3px', position: 'relative' }}>
-                                                    <div style={{ position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#fff', padding: '2px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #17a2b8', color: '#17a2b8' }}>
-                                                        {distanciaKm.toFixed(1)} km
-                                                    </div>
-                                                </div>
-                                                <span style={{ fontSize: '24px' }}>🏠</span>
-                                            </div>
-                                            <p style={{ margin: 0, textAlign: 'center', fontSize: '14px', fontWeight: 'bold', color: '#0c5460' }}>
-                                                ⏳ Tiempo de llegada estimado al cliente: {tiempoMinutos} min
-                                            </p>
-                                        </div>
-                                    )}
 
                                     {/* 💬 CHAT EN VIVO CON EL CLIENTE */}
                                     {esMiViaje && (
-                                        <div style={{ backgroundColor: '#1e2d3d', border: '1px solid #17a2b8', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
-                                            <strong style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#17a2b8' }}>
-                                                💬 Chat y Estados en Vivo con el Cliente:
+                                        <div style={{ backgroundColor: '#111827', border: '1px solid #17a2b8', padding: '12px', borderRadius: '10px', marginBottom: '12px' }}>
+                                            <strong style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: '#17a2b8' }}>
+                                                💬 Chat en Vivo con el Cliente:
                                             </strong>
 
-                                            <div style={{ maxHeight: '130px', overflowY: 'auto', backgroundColor: '#111', padding: '8px', borderRadius: '6px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid #333' }}>
+                                            <div style={{ maxHeight: '120px', overflowY: 'auto', backgroundColor: '#000', padding: '8px', borderRadius: '6px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                 {(() => {
                                                     let chatList = [];
                                                     try { chatList = typeof pedido.chat === 'string' ? JSON.parse(pedido.chat || '[]') : (pedido.chat || []); } catch(e) {}
@@ -539,8 +473,8 @@ function Domiciliario() {
                                                             alignSelf: m.emisor === 'domiciliario' ? 'flex-end' : 'flex-start',
                                                             backgroundColor: m.emisor === 'domiciliario' ? '#17a2b8' : '#333',
                                                             color: 'white',
-                                                            padding: '6px 12px',
-                                                            borderRadius: '12px',
+                                                            padding: '5px 10px',
+                                                            borderRadius: '10px',
                                                             fontSize: '11px',
                                                             maxWidth: '85%'
                                                         }}>
@@ -551,7 +485,7 @@ function Domiciliario() {
                                                 })()}
                                             </div>
 
-                                            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
                                                 {["🛵 Ya voy en camino", "📍 A 2 min de llegar", "🏠 ¡Estoy afuera!", "🚨 Hay tráfico"].map((est, idx) => (
                                                     <button 
                                                         key={idx}
@@ -559,9 +493,9 @@ function Domiciliario() {
                                                         onClick={async () => {
                                                             try {
                                                                 await axios.post(`/api/pedidos/${pedido.id}/mensaje`, { emisor: 'domiciliario', texto: est });
-                                                            } catch(e) { console.error(e); alert("❌ Error al enviar mensaje: " + (e.response?.data?.error || e.message)); }
+                                                            } catch(e) { console.error(e); }
                                                         }}
-                                                        style={{ backgroundColor: '#2a2a3d', color: '#fff', border: '1px solid #17a2b8', padding: '5px 10px', borderRadius: '15px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                        style={{ backgroundColor: '#1f2937', color: '#fff', border: '1px solid #17a2b8', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
                                                     >
                                                         {est}
                                                     </button>
@@ -575,39 +509,39 @@ function Domiciliario() {
                                                 try {
                                                     await axios.post(`/api/pedidos/${pedido.id}/mensaje`, { emisor: 'domiciliario', texto: text });
                                                     e.target.reset();
-                                                } catch(err) { console.error(err); alert("❌ Error al enviar mensaje: " + (err.response?.data?.error || err.message)); }
+                                                } catch(err) { console.error(err); }
                                             }} style={{ display: 'flex', gap: '6px' }}>
-                                                <input type="text" name="msg" placeholder="Escribe un mensaje al cliente..." style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #555', backgroundColor: '#222', color: '#fff', fontSize: '12px' }} />
-                                                <button type="submit" style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Enviar</button>
+                                                <input type="text" name="msg" placeholder="Mensaje..." style={{ flex: 1, padding: '6px', borderRadius: '6px', border: '1px solid #555', backgroundColor: '#222', color: '#fff', fontSize: '11px' }} />
+                                                <button type="submit" style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer' }}>Enviar</button>
                                             </form>
                                         </div>
                                     )}
 
                                     {esMiViaje ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                            <button onClick={() => cambiarEstado(pedido.id, 'entregado')} style={{ width: '100%', padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>✅ Entregado (Se descontará comisión)</button>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <button onClick={() => cambiarEstado(pedido.id, 'entregado')} style={{ width: '100%', padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>✅ Entregado</button>
                                             
                                             {modalCancelacion !== pedido.id ? (
-                                                <button onClick={() => setModalCancelacion(pedido.id)} style={{ width: '100%', padding: '10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>❌ No Entregado (Devolver)</button>
+                                                <button onClick={() => setModalCancelacion(pedido.id)} style={{ width: '100%', padding: '8px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>❌ No Entregado (Devolver)</button>
                                             ) : (
-                                                <div style={{ backgroundColor: '#fff3cd', padding: '15px', borderRadius: '6px', border: '1px solid #ffeeba' }}>
-                                                    <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#856404' }}>Motivo de devolución:</p>
-                                                    <select value={motivoSelect} onChange={e => setMotivoSelect(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                                                <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '8px', border: '1px solid #ffeeba' }}>
+                                                    <p style={{ margin: '0 0 6px 0', fontWeight: 'bold', color: '#856404', fontSize: '12px' }}>Motivo de devolución:</p>
+                                                    <select value={motivoSelect} onChange={e => setMotivoSelect(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }}>
                                                         <option value="">Seleccione...</option>
-                                                        <option value="Cliente no estaba en la dirección">Cliente no estaba en la dirección</option>
+                                                        <option value="Cliente no estaba en la dirección">Cliente no estaba</option>
                                                         <option value="Cliente no contestó">Cliente no contestó</option>
                                                         <option value="Otro">Otro</option>
                                                     </select>
-                                                    {motivoSelect === 'Otro' && <input type="text" placeholder="Escribe el motivo..." value={motivoTexto} onChange={e => setMotivoTexto(e.target.value)} style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />}
-                                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                                        <button onClick={() => enviarNoEntregado(pedido.id)} style={{ flex: 1, padding: '10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Confirmar</button>
-                                                        <button onClick={() => setModalCancelacion(null)} style={{ flex: 1, padding: '10px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Cancelar</button>
+                                                    {motivoSelect === 'Otro' && <input type="text" placeholder="Escribe el motivo..." value={motivoTexto} onChange={e => setMotivoTexto(e.target.value)} style={{ width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '12px' }} />}
+                                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                                        <button onClick={() => enviarNoEntregado(pedido.id)} style={{ flex: 1, padding: '8px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Confirmar</button>
+                                                        <button onClick={() => setModalCancelacion(null)} style={{ flex: 1, padding: '8px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Cancelar</button>
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
                                     ) : (
-                                        <button onClick={() => cambiarEstado(pedido.id, 'llevando_tu_pedido')} style={{ width: '100%', padding: '15px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>🛵 Aceptar y Llevar Pedido</button>
+                                        <button onClick={() => cambiarEstado(pedido.id, 'llevando_tu_pedido')} style={{ width: '100%', padding: '12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>🛵 Aceptar y Llevar Pedido</button>
                                     )}
                                 </div>
                             )}
@@ -615,6 +549,139 @@ function Domiciliario() {
                     )})}
                 </div>
             )}
+
+            {/* 💰 PESTAÑA 2: BILLETERA, RECARGAS Y RESEÑAS */}
+            {vistaActiva === 'billetera' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div className="domi-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                        <h3 style={{ marginTop: 0, fontSize: '16px', color: '#28a745' }}>Recargar Saldo Prepago</h3>
+                        <p style={{ fontSize: '12px', opacity: 0.7 }}>Transfiere a alguna de estas cuentas y envía tu comprobante.</p>
+                        
+                        {bancos.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                                {bancos.map(b => (
+                                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#e2f3f5', padding: '8px 12px', borderRadius: '8px', border: '1px solid #17a2b8' }}>
+                                        {b.imagen ? <img src={b.imagen} alt="" style={{ height: '30px', width: '30px', borderRadius: '4px', objectFit: 'contain' }} /> : <span>🏦</span>}
+                                        <div style={{ fontSize: '12px', color: '#0c5460' }}>
+                                            <strong style={{ display: 'block' }}>{b.nombre}</strong>
+                                            <span>Número: {b.numero}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : null}
+
+                        <form onSubmit={solicitarRecarga} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <select value={formRecarga.banco_destino} onChange={e => setFormRecarga({...formRecarga, banco_destino: e.target.value})} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }}>
+                                <option value="">Selecciona Banco...</option>
+                                {bancos.map(b => <option key={b.id} value={b.nombre}>{b.nombre}</option>)}
+                            </select>
+                            
+                            <input type="number" placeholder="Monto transferido" value={formRecarga.monto} onChange={e => setFormRecarga({...formRecarga, monto: e.target.value})} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }} />
+                            <input type="text" placeholder="Número de Referencia" value={formRecarga.referencia} onChange={e => setFormRecarga({...formRecarga, referencia: e.target.value})} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }} />
+                            <button type="submit" disabled={bancos.length === 0} style={{ padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px' }}>Enviar Comprobante</button>
+                        </form>
+                    </div>
+
+                    <div className="domi-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                        <h3 style={{ marginTop: 0, fontSize: '16px', color: '#007bff' }}>Historial de Ganancias y Reseñas</h3>
+                        {historialEntregas.length === 0 ? <p style={{ fontSize: '13px', opacity: 0.7 }}>Aún no has completado entregas.</p> : (
+                            historialEntregas.slice(0, 15).map(p => {
+                                const neto = Number(p.costo_domicilio) - Number(p.comision_cobrada || 0);
+                                const tieneCalificacion = p.calificacion_domiciliario !== null && p.calificacion_domiciliario !== undefined;
+                                return (
+                                <div key={p.id} style={{ borderBottom: '1px solid #eee', padding: '10px 0', fontSize: '13px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                        <strong>Pedido #{p.id}</strong>
+                                        <span style={{ color: '#28a745', fontWeight: 'bold' }}>Ganancia Neta: ${neto.toLocaleString()}</span>
+                                    </div>
+                                    <span style={{ opacity: 0.6, fontSize: '11px', display: 'block', marginBottom: '6px' }}>
+                                        Costo Domicilio: ${Number(p.costo_domicilio).toLocaleString()} | Comisión Plt: -${Number(p.comision_cobrada || 0).toLocaleString()}
+                                    </span>
+
+                                    {/* ⭐ RESEÑA DEL CLIENTE AL REPARTIDOR */}
+                                    <div className="domi-box-rating" style={{ backgroundColor: '#fff3cd', padding: '8px', borderRadius: '6px', border: '1px solid #ffeeba', color: '#856404' }}>
+                                        <span style={{ fontSize: '11px', fontWeight: 'bold', display: 'block' }}>
+                                            ⭐ Calificación Recibida: {tieneCalificacion ? `${'⭐'.repeat(p.calificacion_domiciliario)} (${p.calificacion_domiciliario}/5)` : 'Sin calificar'}
+                                        </span>
+                                        {p.comentario_calificacion && (
+                                            <p style={{ margin: '2px 0 0 0', fontStyle: 'italic', fontSize: '11px' }}>
+                                                💬 "{p.comentario_calificacion}"
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )})
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR (FLOATING DOCK DEDICADO AL REPARTIDOR) */}
+            <div className="domi-dock" style={{
+                position: 'fixed',
+                bottom: '15px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 'calc(100% - 30px)',
+                maxWidth: '480px',
+                backgroundColor: 'var(--card-bg, #ffffff)',
+                border: '1px solid var(--border-color, #e0e0e0)',
+                borderRadius: '30px',
+                padding: '6px 4px',
+                display: 'flex',
+                justify: 'space-evenly',
+                alignItems: 'center',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                zIndex: 1000
+            }}>
+                <button 
+                    onClick={() => setVistaActiva('pedidos')} 
+                    style={{ 
+                        flex: 1,
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'pedidos' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'pedidos' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: '11px', 
+                        fontWeight: 'bold',
+                        padding: '4px 0',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '20px', lineHeight: '1', marginBottom: '3px' }}>📦</span>
+                    <span style={{ lineHeight: '1' }}>Entregas ({pedidosActivos.length})</span>
+                </button>
+
+                <button 
+                    onClick={() => setVistaActiva('billetera')} 
+                    style={{ 
+                        flex: 1,
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'billetera' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'billetera' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: '11px', 
+                        fontWeight: 'bold',
+                        padding: '4px 0',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '20px', lineHeight: '1', marginBottom: '3px' }}>💰</span>
+                    <span style={{ lineHeight: '1' }}>Billetera y Reseñas</span>
+                </button>
+            </div>
+
         </div>
     );
 }
