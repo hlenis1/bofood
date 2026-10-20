@@ -249,10 +249,76 @@ function Vendedor() {
     ];
 
     return (
-        <div style={{ padding: '15px 15px 100px 15px', fontFamily: 'sans-serif', maxWidth: '520px', margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box' }}>
+        <div className="vendedor-app-wrapper" style={{ padding: '15px 15px 100px 15px', fontFamily: 'sans-serif', maxWidth: '520px', margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box' }}>
             
+            {/* 🎨 REGLAS CSS PARA CORREGIR EL MODO OSCURO EN CUALQUIER ELEMENTO O INPUT */}
+            <style>{`
+                body.dark .vendedor-card,
+                body.dark-mode .vendedor-card,
+                body.modo-oscuro .vendedor-card,
+                [data-theme="dark"] .vendedor-card {
+                    background-color: #1a1a2e !important;
+                    border-color: #2e2e4a !important;
+                    color: #ffffff !important;
+                }
+
+                body.dark .vendedor-chip,
+                body.dark-mode .vendedor-chip,
+                body.modo-oscuro .vendedor-chip,
+                [data-theme="dark"] .vendedor-chip {
+                    background-color: #22223b !important;
+                    border-color: #3d3d66 !important;
+                    color: #ffffff !important;
+                }
+
+                body.dark input, body.dark select, body.dark textarea,
+                body.dark-mode input, body.dark-mode select, body.dark-mode textarea,
+                body.modo-oscuro input, body.modo-oscuro select, body.modo-oscuro textarea,
+                [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+                    background-color: #0f0f1a !important;
+                    border-color: #3d3d6b !important;
+                    color: #ffffff !important;
+                }
+
+                body.dark .vendedor-box-bank,
+                body.dark-mode .vendedor-box-bank,
+                body.modo-oscuro .vendedor-box-bank,
+                [data-theme="dark"] .vendedor-box-bank {
+                    background-color: #122c38 !important;
+                    border-color: #17a2b8 !important;
+                    color: #e0f7fa !important;
+                }
+
+                body.dark .vendedor-box-rating,
+                body.dark-mode .vendedor-box-rating,
+                body.modo-oscuro .vendedor-box-rating,
+                [data-theme="dark"] .vendedor-box-rating {
+                    background-color: #3d3215 !important;
+                    border-color: #ffc107 !important;
+                    color: #fff3cd !important;
+                }
+
+                body.dark .vendedor-subcard,
+                body.dark-mode .vendedor-subcard,
+                body.modo-oscuro .vendedor-subcard,
+                [data-theme="dark"] .vendedor-subcard {
+                    background-color: #21213b !important;
+                    border-color: #323254 !important;
+                    color: #ffffff !important;
+                }
+
+                body.dark .vendedor-dock,
+                body.dark-mode .vendedor-dock,
+                body.modo-oscuro .vendedor-dock,
+                [data-theme="dark"] .vendedor-dock {
+                    background-color: #121224 !important;
+                    border-color: #2e2e4a !important;
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.6) !important;
+                }
+            `}</style>
+
             {/* 🏷️ BARRITA DE SALUDO Y MODO OSCURO/CLARO */}
-            <div style={{
+            <div className="vendedor-chip" style={{
                 display: 'flex',
                 justify: 'space-between',
                 alignItems: 'center',
@@ -278,7 +344,7 @@ function Vendedor() {
             </div>
 
             {/* 🏪 TARJETA CENTRADA DE LA TIENDA */}
-            <div style={{
+            <div className="vendedor-card" style={{
                 backgroundColor: 'var(--card-bg, #ffffff)',
                 border: '1px solid var(--border-color, #e0e0e0)',
                 borderRadius: '16px',
@@ -332,11 +398,11 @@ function Vendedor() {
 
             {/* 💰 TARJETA RESUMEN DE SALDOS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
                     <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '4px' }}>Por cobrar al Admin:</span>
                     <strong style={{ fontSize: '16px', color: '#28a745' }}>${dineroAFavor.toLocaleString()}</strong>
                 </div>
-                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
                     <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '4px' }}>Saldo Comisiones:</span>
                     <strong style={{ fontSize: '16px', color: miSaldo <= 0 ? '#dc3545' : '#17a2b8' }}>${miSaldo.toLocaleString()}</strong>
                 </div>
@@ -351,7 +417,7 @@ function Vendedor() {
             {/* 🛒 VISTA DE CONTENIDO: MIS VENTAS */}
             {vistaActiva === 'ventas' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--card-bg, #ffffff)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color, #e0e0e0)' }}>
+                    <div className="vendedor-card" style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--card-bg, #ffffff)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color, #e0e0e0)' }}>
                         <button 
                             onClick={() => setSubVistaVentas('activas')}
                             style={{ 
@@ -366,7 +432,7 @@ function Vendedor() {
                                 cursor: 'pointer' 
                             }}
                         >
-                            javascriptActivos ({ventasActivas.length})
+                            🛵 Activos ({ventasActivas.length})
                         </button>
                         <button 
                             onClick={() => setSubVistaVentas('historial')}
@@ -389,14 +455,14 @@ function Vendedor() {
                     {subVistaVentas === 'activas' && (
                         <div>
                             {ventasActivas.length === 0 ? (
-                                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', textAlign: 'center', opacity: 0.7, border: '1px solid var(--border-color, #e0e0e0)' }}>
+                                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', textAlign: 'center', opacity: 0.7, border: '1px solid var(--border-color, #e0e0e0)' }}>
                                     No hay pedidos pendientes por despachar. ☕
                                 </div>
                             ) : (
                                 ventasActivas.map(pedido => {
                                     const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
                                     return (
-                                        <div key={pedido.id} style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', borderRadius: '14px', padding: '15px', marginBottom: '12px' }}>
+                                        <div key={pedido.id} className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', borderRadius: '14px', padding: '15px', marginBottom: '12px' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
                                                 <div>
                                                     <strong style={{ fontSize: '16px', color: '#007bff' }}>Pedido #{pedido.id}</strong><br/>
@@ -433,7 +499,7 @@ function Vendedor() {
                     {subVistaVentas === 'historial' && (
                         <div>
                             {ventasEntregadas.length === 0 ? (
-                                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', textAlign: 'center', opacity: 0.7, border: '1px solid var(--border-color, #e0e0e0)' }}>
+                                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', textAlign: 'center', opacity: 0.7, border: '1px solid var(--border-color, #e0e0e0)' }}>
                                     Aún no hay ventas entregadas registradas.
                                 </div>
                             ) : (
@@ -443,7 +509,7 @@ function Vendedor() {
                                     const tieneCalificacion = pedido.calificacion_tienda !== null && pedido.calificacion_tienda !== undefined;
 
                                     return (
-                                        <div key={pedido.id} style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
+                                        <div key={pedido.id} className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '6px' }}>
                                                 <div>
                                                     <strong style={{ fontSize: '14px' }}>Pedido #{pedido.id}</strong>
@@ -454,7 +520,7 @@ function Vendedor() {
                                                 </span>
                                             </div>
 
-                                            <div style={{ backgroundColor: '#fff3cd', padding: '8px', borderRadius: '6px', border: '1px solid #ffeeba', fontSize: '12px', color: '#856404' }}>
+                                            <div className="vendedor-box-rating" style={{ backgroundColor: '#fff3cd', padding: '8px', borderRadius: '6px', border: '1px solid #ffeeba', fontSize: '12px', color: '#856404' }}>
                                                 <span style={{ display: 'block', fontWeight: 'bold' }}>
                                                     ⭐ Calificación Recibida: {tieneCalificacion ? `${'⭐'.repeat(pedido.calificacion_tienda)} (${pedido.calificacion_tienda}/5)` : 'Sin calificar'}
                                                 </span>
@@ -476,7 +542,7 @@ function Vendedor() {
             {/* 💰 VISTA DE BILLETERA Y RECARGAS */}
             {vistaActiva === 'billetera' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                    <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                         <h3 style={{ marginTop: 0, fontSize: '16px', color: '#28a745' }}>📥 Cuenta de Cobro</h3>
                         <p style={{ fontSize: '12px', opacity: 0.7 }}>Cuenta donde el Administrador te enviará tus ganancias acumuladas.</p>
                         <form onSubmit={guardarCuentaRetiro} style={{ display: 'flex', gap: '8px' }}>
@@ -485,14 +551,14 @@ function Vendedor() {
                         </form>
                     </div>
 
-                    <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                    <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                         <h3 style={{ marginTop: 0, fontSize: '16px', color: '#007bff' }}>💳 Recargar Saldo Prepago</h3>
                         {bancos.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                                 {bancos.map(b => (
-                                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#e2f3f5', padding: '8px 12px', borderRadius: '8px', border: '1px solid #17a2b8' }}>
+                                    <div key={b.id} className="vendedor-box-bank" style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#e2f3f5', padding: '8px 12px', borderRadius: '8px', border: '1px solid #17a2b8' }}>
                                         {b.imagen ? <img src={b.imagen} alt="" style={{ height: '30px', width: '30px', borderRadius: '4px', objectFit: 'contain' }} /> : <span>🏦</span>}
-                                        <div style={{ fontSize: '12px', color: '#0c5460' }}>
+                                        <div style={{ fontSize: '12px' }}>
                                             <strong style={{ display: 'block' }}>{b.nombre}</strong>
                                             <span>Número: {b.numero}</span>
                                         </div>
@@ -515,7 +581,7 @@ function Vendedor() {
 
             {/* 📸 VISTA DE SUBIR NUEVO PRODUCTO */}
             {vistaActiva === 'subir' && (
-                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                     <h3 style={{ marginTop: 0, fontSize: '16px' }}>Publicar Nuevo Producto 📸</h3>
                     <form onSubmit={subirProducto} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <input type="text" placeholder="Nombre del producto" value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }} />
@@ -531,12 +597,12 @@ function Vendedor() {
 
             {/* 📦 VISTA DE PRODUCTOS PUBLICADOS */}
             {vistaActiva === 'productos' && (
-                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                     <h3 style={{ marginTop: 0, fontSize: '16px' }}>Mis Productos Publicados</h3>
                     {misProductos.length === 0 ? <p style={{ opacity: 0.7, fontSize: '13px' }}>Aún no has publicado nada.</p> : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {misProductos.map(p => (
-                                <div key={p.id} style={{ border: '1px solid #eee', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div key={p.id} className="vendedor-subcard" style={{ border: '1px solid #eee', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <img src={p.imagen} alt="" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px', opacity: p.disponible ? 1 : 0.4 }} />
                                     <div style={{ flex: 1 }}>
                                         <strong style={{ display: 'block', fontSize: '14px', opacity: p.disponible ? 1 : 0.5 }}>{p.nombre}</strong>
@@ -555,20 +621,20 @@ function Vendedor() {
 
             {/* 🏪 CONFIGURAR DATOS DE LA TIENDA */}
             {vistaActiva === 'tienda' && (
-                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                     <ConfigurarTienda usuarioId={usuarioInfo.id} />
                 </div>
             )}
 
             {/* 💳 APROBAR PAGOS */}
             {vistaActiva === 'validar_pagos' && (
-                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                <div className="vendedor-card" style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                     <VendedorAprobarPago />
                 </div>
             )}
 
-            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR CON CENTRADO SIMÉTRICO Y EXACTO */}
-            <div style={{
+            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR */}
+            <div className="vendedor-dock" style={{
                 position: 'fixed',
                 bottom: '15px',
                 left: '50%',
