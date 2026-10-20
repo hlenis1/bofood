@@ -323,6 +323,19 @@ function Domiciliario() {
 
                         return (
                         <div key={pedido.id} style={{ border: esMiViaje ? '2px solid #007bff' : '1px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                            
+                            {/* 🟢 BOTONES DIRECTOS DE ACCIÓN RÁPIDA (VISIBLES INCLUSO CON LA TARJETA CONTRAÍDA) */}
+                            {esMiViaje && (
+                                <div style={{ backgroundColor: '#1e2d3d', padding: '10px 15px', borderBottom: '1px solid #17a2b8', display: 'flex', gap: '10px' }}>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); cambiarEstado(pedido.id, 'entregado'); }} 
+                                        style={{ flex: 1, padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}
+                                    >
+                                        ✅ Entregado (Cobrar Comisión)
+                                    </button>
+                                </div>
+                            )}
+
                             <div 
                                 onClick={() => togglePedido(pedido.id)} 
                                 style={{ padding: '15px', cursor: 'pointer', borderBottom: estaExpandido ? '1px solid #eee' : 'none', userSelect: 'none' }}
@@ -331,10 +344,10 @@ function Domiciliario() {
                                     <div>
                                         <h3 style={{ margin: '0 0 5px 0', fontSize: '18px' }}>Pedido #{pedido.id}</h3>
                                         <p style={{ margin: '2px 0', fontSize: '14px' }}>
-                                            Cobrar: <strong style={{ color: '#28a745', fontSize: '15px' }}>${Number(pedido.total || 0).toLocaleString()}</strong> ({pedido.metodo_pago ? pedido.metodo_pago.toUpperCase() : 'N/A'})
+                                            Cobrar al cliente: <strong style={{ color: '#28a745', fontSize: '15px' }}>${Number(pedido.total || 0).toLocaleString()}</strong> ({pedido.metodo_pago ? pedido.metodo_pago.toUpperCase() : 'N/A'})
                                         </p>
                                         <p style={{ margin: '2px 0', color: '#17a2b8', fontSize: '13px', fontWeight: 'bold' }}>
-                                            Domicilio: ${Number(pedido.costo_domicilio || 0).toLocaleString()}
+                                            Pago Domicilio: ${Number(pedido.costo_domicilio || 0).toLocaleString()}
                                         </p>
                                     </div>
                                     <span style={{ backgroundColor: esMiViaje ? '#007bff' : '#6f42c1', color: 'white', padding: '5px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' }}>
@@ -349,7 +362,7 @@ function Domiciliario() {
                                 </div>
 
                                 <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '12px', color: '#007bff', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                                    <span>{estaExpandido ? '▲ Ocultar detalles del pedido' : '▼ Ver detalles completos'}</span>
+                                    <span>{estaExpandido ? '▲ Ocultar detalles del viaje' : '▼ Ver detalles y dirección'}</span>
                                 </div>
                             </div>
 
@@ -463,12 +476,6 @@ function Domiciliario() {
                                                 ⏳ Tiempo de llegada estimado al cliente: {tiempoMinutos} min
                                             </p>
                                         </div>
-                                    )}
-
-                                    {dirCliente.gps && esMiViaje && !miUbicacion && (
-                                        <p style={{ textAlign: 'center', fontWeight: 'bold', color: '#17a2b8', fontSize: '13px', margin: '10px 0' }}>
-                                            📡 Conectando antena GPS para calcular distancia...
-                                        </p>
                                     )}
 
                                     {/* 💬 SECCIÓN CHAT Y ESTADOS RÁPIDOS EN TIEMPO REAL CON EL CLIENTE */}

@@ -248,6 +248,19 @@ function Tienda() {
         }
     };
 
+    const confirmarEntregaCliente = async (pedidoId) => {
+        if (window.confirm("¿Confirmas que ya recibiste tu pedido de forma satisfactoria?")) {
+            try {
+                await axios.put(`${API_URL}/api/pedidos/${pedidoId}/estado`, { estado: 'entregado' });
+                alert("🎉 ¡Gracias por tu compra! Tu pedido fue marcado como entregado.");
+                const res = await axios.get(`${API_URL}/api/pedidos/cliente/${usuarioInfo.id}`);
+                setMisPedidos(res.data);
+            } catch (err) {
+                alert("Error al confirmar la entrega del pedido");
+            }
+        }
+    };
+
     if (!usuarioInfo) return null;
 
     const bancoSeleccionado = bancos.find(b => b.nombre === metodoPago);
@@ -620,8 +633,28 @@ function Tienda() {
                                             </div>
                                         )}
 
-                                        <div style={{ marginTop: '12px', backgroundColor: enRuta ? '#007bff' : '#6c757d', color: 'white', padding: '6px 15px', borderRadius: '20px', fontWeight: 'bold', textAlign: 'center', fontSize: '12px', width: 'fit-content' }}>
-                                            {pedido.estado.replace('_', ' ').toUpperCase()}
+                                        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                                            <div style={{ backgroundColor: enRuta ? '#007bff' : '#6c757d', color: 'white', padding: '6px 15px', borderRadius: '20px', fontWeight: 'bold', textAlign: 'center', fontSize: '12px', width: 'fit-content' }}>
+                                                {pedido.estado.replace('_', ' ').toUpperCase()}
+                                            </div>
+
+                                            {/* 🟢 BOTÓN PARA CONFIRMAR RECEPCIÓN DEL PEDIDO */}
+                                            <button 
+                                                onClick={() => confirmarEntregaCliente(pedido.id)}
+                                                style={{ 
+                                                    backgroundColor: '#28a745', 
+                                                    color: 'white', 
+                                                    border: 'none', 
+                                                    padding: '8px 14px', 
+                                                    borderRadius: '6px', 
+                                                    fontWeight: 'bold', 
+                                                    fontSize: '13px', 
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 3px 8px rgba(40,167,69,0.4)'
+                                                }}
+                                            >
+                                                ✅ ¡Ya recibí mi Pedido!
+                                            </button>
                                         </div>
                                     </div>
                                 );
