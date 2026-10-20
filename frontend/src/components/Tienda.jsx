@@ -54,6 +54,12 @@ function Tienda() {
     const [miUbicacionCliente, setMiUbicacionCliente] = useState(null);
     const watchClienteRef = useRef(null);
 
+    // ⭐ ESTADOS PARA MODAL DE CALIFICACIÓN
+    const [modalCalificacion, setModalCalificacion] = useState(null); // ID de pedido
+    const [califTienda, setCalifTienda] = useState(5);
+    const [califDomi, setCalifDomi] = useState(5);
+    const [comentario, setComentario] = useState('');
+
     const navigate = useNavigate();
     
     const [direccionManual, setDireccionManual] = useState('');
@@ -106,7 +112,9 @@ function Tienda() {
                             descripcion: 'Productos oficiales del establecimiento',
                             logo_url: null,
                             es_principal: true,
-                            abierta: 1
+                            abierta: 1,
+                            promedio_calificacion: 5,
+                            total_calificaciones: 0
                         },
                         ...listaTiendas
                     ];
@@ -248,17 +256,39 @@ function Tienda() {
         }
     };
 
-    const confirmarEntregaCliente = async (pedidoId) => {
-        if (window.confirm("¿Confirmas que ya recibiste tu pedido de forma satisfactoria?")) {
-            try {
-                await axios.put(`${API_URL}/api/pedidos/${pedidoId}/estado`, { estado: 'entregado' });
-                alert("🎉 ¡Gracias por tu compra! Tu pedido fue marcado como entregado.");
-                const res = await axios.get(`${API_URL}/api/pedidos/cliente/${usuarioInfo.id}`);
-                setMisPedidos(res.data);
-            } catch (err) {
-                alert("Error al confirmar la entrega del pedido");
-            }
+    // ⭐ GUARDAR ESTRELLAS Y ESTADO
+    const enviarCalificacionYEntregado = async () => {
+        if (!modalCalificacion) return;
+        try {
+            await axios.put(`${API_URL}/api/pedidos/${modalCalificacion}/estado`, { estado: 'entregado' });
+            await axios.put(`${API_URL}/api/pedidos/${modalCalificacion}/calificar`, {
+                calificacion_tienda: califTienda,
+                calificacion_domiciliario: califDomi,
+                comentario
+            });
+
+            alert("🎉 ¡Muchas gracias por tu calificación!");
+            setModalCalificacion(null);
+            setComentario('');
+            setCalifTienda(5);
+            setCalifDomi(5);
+
+            const [resPedidos, resTiendas] = await Promise.all([
+                axios.get(`${API_URL}/api/pedidos/cliente/${usuarioInfo.id}`),
+                axios.get(`${API_URL}/api/tiendas`)
+            ]);
+            setMisPedidos(resPedidos.data);
+            setTiendas(resTiendas.data);
+        } catch (err) {
+            alert("Error al guardar la calificación");
         }
+    };
+
+    const abrirModalCalificacion = (pedidoId) => {
+        setModalCalificacion(pedidoId);
+        setCalifTienda(5);
+        setCalifDomi(5);
+        setComentario('');
     };
 
     if (!usuarioInfo) return null;
@@ -279,11 +309,12 @@ function Tienda() {
 
     const pedidosActivos = misPedidos.filter(p => p.estado !== 'entregado' && p.estado !== 'cancelado' && p.estado !== 'cancelado_devuelto');
     const historialPedidos = misPedidos.filter(p => p.estado === 'entregado' || p.estado === 'cancelado' || p.estado === 'cancelado_devuelto');
+    const sinCalificar = misPedidos.filter(p => p.estado === 'entregado' && !p.calificacion_tienda);
 
     return (
         <div style={{ padding: '15px', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', paddingBottom: '120px', minHeight: '100vh' }}>
             
-            {/* 📌 ENCABEZADO SUPERIOR FIJO (STICKY HEADER) */}
+            {/* 📌 ENCABEZADO SUPERIOR FIJO */}
             <div style={{ 
                 position: 'sticky', 
                 top: 0, 
@@ -311,6 +342,19 @@ function Tienda() {
                 </div>
             </div>
 
+            {/* ⭐ AVISO DE PEDIDOS ENTREGADOS PENDIENTES POR CALIFICAR */}
+            {sinCalificar.length > 0 && (
+                <div style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', border: '1px solid #ffeeba', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>⭐ Tienes <strong>{sinCalificar.length}</strong> pedido(s) entregado(s) sin calificar.</span>
+                    <button 
+                        onClick={() => abrirModalCalificacion(sinCalificar[0].id)}
+                        style={{ backgroundColor: '#ffc107', color: '#212529', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                        Calificar Ahora
+                    </button>
+                </div>
+            )}
+
             {/* ------------------------------------------------------------- */}
             {/* VISTA 1: TIENDAS Y PRODUCTOS */}
             {/* ------------------------------------------------------------- */}
@@ -326,6 +370,9 @@ function Tienda() {
                                     {tiendas.map(tienda => {
                                         const dirTienda = parseDireccion(tienda.direccion);
                                         const estaAbierta = esTiendaAbierta(tienda);
+                                        const promRating = Number(tienda.promedio_calificacion || 0);
+                                        const totalRating = Number(tienda.total_calificaciones || 0);
+
                                         return (
                                             <div 
                                                 key={tienda.usuario_id || tienda.nombre} 
@@ -356,6 +403,18 @@ function Tienda() {
                                                     style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', marginBottom: '10px', border: estaAbierta ? '2px solid #007bff' : '2px solid #dc3545' }} 
                                                 />
                                                 <h4 style={{ margin: '5px 0' }}>{tienda.nombre}</h4>
+                                                
+                                                {/* ⭐ PROMEDIO DE ESTRELLAS MOSTRADO A FUTUROS COMPRADORES */}
+                                                <div style={{ margin: '3px 0 8px 0', fontSize: '13px', color: '#ffc107', fontWeight: 'bold' }}>
+                                                    {promRating > 0 ? (
+                                                        <span>
+                                                            {'⭐'.repeat(Math.round(promRating))} {promRating.toFixed(1)} ({totalRating})
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ color: '#888', fontStyle: 'italic', fontSize: '11px' }}>Sin reseñas aún</span>
+                                                    )}
+                                                </div>
+
                                                 <p style={{ margin: '0 0 5px 0', fontSize: '12px', color: '#888', height: '32px', overflow: 'hidden' }}>{tienda.descripcion || 'Sin descripción'}</p>
                                                 <p style={{ margin: '2px 0 10px 0', fontSize: '11px' }}>📍 {dirTienda.texto}</p>
 
@@ -385,6 +444,7 @@ function Tienda() {
 
                             {(() => {
                                 const dirTienda = parseDireccion(tiendaSeleccionada.direccion);
+                                const promRating = Number(tiendaSeleccionada.promedio_calificacion || 0);
                                 return (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #444' }}>
                                         <img 
@@ -395,6 +455,9 @@ function Tienda() {
                                         />
                                         <div>
                                             <h3 style={{ margin: 0 }}>{tiendaSeleccionada.nombre} {!esTiendaAbierta(tiendaSeleccionada) && <span style={{ color: '#dc3545', fontSize: '14px' }}>(🔴 Cerrado)</span>}</h3>
+                                            <div style={{ fontSize: '13px', color: '#ffc107', margin: '2px 0' }}>
+                                                {promRating > 0 ? `⭐ ${promRating.toFixed(1)} / 5.0` : 'Sin calificaciones'}
+                                            </div>
                                             <p style={{ margin: '2px 0', fontSize: '13px', color: '#aaa' }}>{tiendaSeleccionada.descripcion}</p>
                                             <p style={{ margin: '2px 0', fontSize: '12px' }}>📍 <strong>Dirección:</strong> {dirTienda.texto}</p>
                                         </div>
@@ -437,7 +500,7 @@ function Tienda() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* VISTA 2: CARRITO DE COMPRAS Y PROCESO DE PAGO */}
+            {/* VISTA 2: CARRITO DE COMPRAS */}
             {/* ------------------------------------------------------------- */}
             {vistaActiva === 'carrito' && (
                 <div>
@@ -518,7 +581,7 @@ function Tienda() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* VISTA 3: SEGUIMIENTO EN TIEMPO REAL (PEDIDOS ACTIVOS) */}
+            {/* VISTA 3: SEGUIMIENTO EN TIEMPO REAL */}
             {/* ------------------------------------------------------------- */}
             {vistaActiva === 'seguimiento' && (
                 <div>
@@ -573,7 +636,6 @@ function Tienda() {
                                                     <p style={{ margin: 0, textAlign: 'center', fontSize: '13px', color: '#17a2b8', fontWeight: 'bold' }}>📡 Ubicando repartidor...</p>
                                                 )}
 
-                                                {/* 💬 SECCIÓN CHAT Y ESTADOS RÁPIDOS CLIENTE */}
                                                 <div style={{ marginTop: '12px', borderTop: '1px solid #bce5eb', paddingTop: '10px' }}>
                                                     <strong style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#0c5460' }}>
                                                         💬 Mensajes y Estados con el Repartidor:
@@ -608,7 +670,7 @@ function Tienda() {
                                                                 onClick={async () => {
                                                                     try {
                                                                         await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: est });
-                                                                    } catch(e) { console.error(e); alert("❌ Error al enviar mensaje: " + (e.response?.data?.error || e.message)); }
+                                                                    } catch(e) { alert("❌ Error al enviar mensaje"); }
                                                                 }}
                                                                 style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
                                                             >
@@ -624,7 +686,7 @@ function Tienda() {
                                                         try {
                                                             await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: text });
                                                             e.target.reset();
-                                                        } catch(err) { console.error(err); alert("❌ Error al enviar mensaje: " + (err.response?.data?.error || err.message)); }
+                                                        } catch(err) { alert("❌ Error al enviar mensaje"); }
                                                     }} style={{ display: 'flex', gap: '5px' }}>
                                                         <input type="text" name="msg" placeholder="Escribe al repartidor..." style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid #17a2b8', fontSize: '11px' }} />
                                                         <button type="submit" style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer' }}>Enviar</button>
@@ -638,9 +700,9 @@ function Tienda() {
                                                 {pedido.estado.replace('_', ' ').toUpperCase()}
                                             </div>
 
-                                            {/* 🟢 BOTÓN PARA CONFIRMAR RECEPCIÓN DEL PEDIDO */}
+                                            {/* 🟢 ABRE MODAL INTERACTIVO DE CONFIRMACIÓN Y ESTRELLAS */}
                                             <button 
-                                                onClick={() => confirmarEntregaCliente(pedido.id)}
+                                                onClick={() => abrirModalCalificacion(pedido.id)}
                                                 style={{ 
                                                     backgroundColor: '#28a745', 
                                                     color: 'white', 
@@ -665,7 +727,7 @@ function Tienda() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* VISTA 4: HISTORIAL DE COMPRAS */}
+            {/* VISTA 4: HISTORIAL DE COMPRAS (PERMITE CALIFICAR ENTREGADOS) */}
             {/* ------------------------------------------------------------- */}
             {vistaActiva === 'historial' && (
                 <div>
@@ -676,15 +738,43 @@ function Tienda() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {historialPedidos.map(pedido => {
                                 const cancelado = pedido.estado === 'cancelado' || pedido.estado === 'cancelado_devuelto';
+                                const yaCalificado = pedido.calificacion_tienda !== null && pedido.calificacion_tienda !== undefined;
+
                                 return (
                                     <div key={pedido.id} style={{ padding: '12px', border: cancelado ? '1px solid #dc3545' : '1px solid #444', borderRadius: '8px', opacity: 0.9 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <strong>Pedido #{pedido.id}</strong>
                                             <span style={{ fontSize: '12px', color: '#888' }}>{new Date(pedido.fecha_creacion).toLocaleDateString()}</span>
                                         </div>
-                                        <p style={{ margin: '5px 0 0 0', fontSize: '13px' }}>
+
+                                        <p style={{ margin: '5px 0', fontSize: '13px' }}>
                                             Total: <strong>${Number(pedido.total).toLocaleString()}</strong> | Pago: {pedido.metodo_pago.toUpperCase()}
                                         </p>
+
+                                        {/* ⭐ MUESTRA CALIFICACIÓN O PERMITE CALIFICAR SI ESTÁ ENTREGADO Y SIN CALIFICAR */}
+                                        {yaCalificado ? (
+                                            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#ffc107', fontWeight: 'bold' }}>
+                                                Tu calificación: {'⭐'.repeat(pedido.calificacion_tienda)} ({pedido.calificacion_tienda}/5)
+                                            </p>
+                                        ) : !cancelado && (
+                                            <button 
+                                                onClick={() => abrirModalCalificacion(pedido.id)}
+                                                style={{ 
+                                                    marginTop: '8px',
+                                                    backgroundColor: '#ffc107', 
+                                                    color: '#212529', 
+                                                    border: 'none', 
+                                                    padding: '6px 12px', 
+                                                    borderRadius: '6px', 
+                                                    fontWeight: 'bold', 
+                                                    fontSize: '12px', 
+                                                    cursor: 'pointer' 
+                                                }}
+                                            >
+                                                ⭐ Calificar Servicio
+                                            </button>
+                                        )}
+
                                         <div style={{ marginTop: '8px', backgroundColor: cancelado ? '#dc3545' : '#28a745', color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', width: 'fit-content' }}>
                                             {pedido.estado.replace('_', ' ').toUpperCase()}
                                         </div>
@@ -697,7 +787,93 @@ function Tienda() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* 🔔 NOTIFICACIÓN FLOTANTE CUANDO HAY ITEMS EN EL CARRITO */}
+            {/* ⭐ VENTANA MODAL INTERACTIVA DE ENTREGADO Y CALIFICACIÓN */}
+            {/* ------------------------------------------------------------- */}
+            {modalCalificacion && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2000,
+                    padding: '20px'
+                }}>
+                    <div style={{
+                        backgroundColor: '#1a1a2e',
+                        color: 'white',
+                        borderRadius: '16px',
+                        padding: '25px',
+                        maxWidth: '420px',
+                        width: '100%',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+                        border: '1px solid #007bff'
+                    }}>
+                        <h3 style={{ marginTop: 0, color: '#28a745', textAlign: 'center', fontSize: '20px' }}>🎉 ¡Confirmar Entrega!</h3>
+                        <p style={{ textAlign: 'center', fontSize: '13px', color: '#ccc', marginBottom: '20px' }}>
+                            Califica la atención para ayudar a futuros compradores:
+                        </p>
+
+                        {/* ⭐ CALIFICACIÓN A LA TIENDA */}
+                        <div style={{ backgroundColor: '#16213e', padding: '12px', borderRadius: '10px', marginBottom: '15px', textAlign: 'center' }}>
+                            <strong style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#17a2b8' }}>🏬 Califica la Tienda / Productos:</strong>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                {[1, 2, 3, 4, 5].map(star => (
+                                    <span 
+                                        key={star} 
+                                        onClick={() => setCalifTienda(star)}
+                                        style={{ fontSize: '32px', cursor: 'pointer', userSelect: 'none' }}
+                                    >
+                                        {star <= califTienda ? '⭐' : '☆'}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ⭐ CALIFICACIÓN AL REPARTIDOR */}
+                        <div style={{ backgroundColor: '#16213e', padding: '12px', borderRadius: '10px', marginBottom: '15px', textAlign: 'center' }}>
+                            <strong style={{ display: 'block', marginBottom: '6px', fontSize: '14px', color: '#17a2b8' }}>🛵 Califica al Repartidor:</strong>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                {[1, 2, 3, 4, 5].map(star => (
+                                    <span 
+                                        key={star} 
+                                        onClick={() => setCalifDomi(star)}
+                                        style={{ fontSize: '32px', cursor: 'pointer', userSelect: 'none' }}
+                                    >
+                                        {star <= califDomi ? '⭐' : '☆'}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        <textarea 
+                            placeholder="Comentario adicional (opcional)..."
+                            value={comentario}
+                            onChange={e => setComentario(e.target.value)}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#0f3460', color: 'white', boxSizing: 'border-box', minHeight: '65px', marginBottom: '15px', fontSize: '13px' }}
+                        />
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                                onClick={enviarCalificacionYEntregado}
+                                style={{ flex: 1, padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}
+                            >
+                                Confirmar y Enviar
+                            </button>
+                            <button 
+                                onClick={() => setModalCalificacion(null)}
+                                style={{ padding: '12px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* 🔔 BARRA FLOTANTE DE CARRITO */}
             {/* ------------------------------------------------------------- */}
             {carrito.length > 0 && vistaActiva !== 'carrito' && (
                 <div 
@@ -728,7 +904,7 @@ function Tienda() {
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* 📱 BARRA FLOTANTE CENTRADA CON INSIGNIAS NUMÉRICAS DINÁMICAS */}
+            {/* 📱 BARRA DE NAVEGACIÓN INFERIOR */}
             {/* ------------------------------------------------------------- */}
             <div style={{
                 position: 'fixed',
