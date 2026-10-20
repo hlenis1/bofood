@@ -72,8 +72,13 @@ const ejecutarParche = async () => {
         "ALTER TABLE pedidos ADD COLUMN estado_pago VARCHAR(50) DEFAULT 'pendiente'",
         "ALTER TABLE pedidos ADD COLUMN motivo_cancelacion TEXT DEFAULT NULL",
         
-        // 💬 FIX: Se remueve DEFAULT '[]' porque la columna TEXT no lo soporta en MySQL
+        // 💬 PERSISTENCIA DE CHAT (Compatibilidad MySQL TEXT)
         "ALTER TABLE pedidos ADD COLUMN chat TEXT",
+
+        // ⭐ COLUMNAS PARA CALIFICACIÓN DE TIENDA Y DOMICILIARIO
+        "ALTER TABLE pedidos ADD COLUMN calificacion_tienda INT DEFAULT NULL",
+        "ALTER TABLE pedidos ADD COLUMN calificacion_domiciliario INT DEFAULT NULL",
+        "ALTER TABLE pedidos ADD COLUMN comentario_calificacion TEXT DEFAULT NULL",
 
         `CREATE TABLE IF NOT EXISTS recargas (
             id INT AUTO_INCREMENT PRIMARY KEY, 
@@ -148,11 +153,29 @@ ejecutarParche();
 
 app.get('/api/arreglar-bd', async (req, res) => { 
     await ejecutarParche(); 
-    res.json({ success: true, message: "Base de datos parcheada, columna de chat agregada y roles corregidos." }); 
+    res.json({ success: true, message: "Base de datos parcheada, columnas agregadas y roles corregidos." }); 
 });
 
 io.on('connection', (socket) => { 
     socket.on('ubicacion_domiciliario', (data) => io.emit('ubicacion_domiciliario', data)); 
+});
+
+// ==========================================
+// ⭐ ENDPOINT PARA CALIFICAR TIENDA Y REPARTIDOR
+// ==========================================
+app.put('/api/pedidos/:id/calificar', async (req, res) => {
+    const { calificacion_tienda, calificacion_domiciliario, comentario } = req.body;
+    try {
+        await db.query(
+            'UPDATE pedidos SET calificacion_tienda = ?, calificacion_domiciliario = ?, comentario_calificacion = ? WHERE id = ?',
+            [calificacion_tienda || null, calificacion_domiciliario || null, comentario || '', req.params.id]
+        );
+        io.emit('catalogo_actualizado');
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Error al guardar calificación:", e);
+        res.status(500).json({ error: 'Error al guardar la calificación: ' + e.message });
+    }
 });
 
 // ==========================================
@@ -169,7 +192,6 @@ app.post('/api/pedidos/:id/mensaje', async (req, res) => {
         try {
             [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
         } catch (errCol) {
-            // FIX: Se crea sin DEFAULT '[]'
             await db.query("ALTER TABLE pedidos ADD COLUMN chat TEXT");
             [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
         }
@@ -196,7 +218,6 @@ app.post('/api/pedidos/:id/mensaje', async (req, res) => {
 
         await db.query('UPDATE pedidos SET chat = ? WHERE id = ?', [JSON.stringify(chat), req.params.id]);
 
-        // Retransmitir mensaje vía WebSockets
         io.emit('nuevo_mensaje_pedido', { pedidoId: Number(req.params.id), chatCompleto: chat });
 
         res.json({ success: true, chat });
@@ -715,7 +736,7 @@ app.put('/api/recargas/:id/estado', async (req, res) => {
 });
 
 // ========================================================
-// 🏪 ENDPOINTS DE LA TIENDA Y ESTADO
+// 🏪 TIENDAS CON PROMEDIO Y TOTAL DE CALIFICACIONES
 // ========================================================
 
 app.get('/api/tiendas', async (req, res) => {
@@ -730,10 +751,14 @@ app.get('/api/tiendas', async (req, res) => {
                 COALESCE(NULLIF(t.direccion, ''), u.direccion) AS direccion,
                 COALESCE(NULLIF(t.telefono, ''), u.telefono) AS telefono,
                 u.nombre AS propietario,
-                u.rol
+                u.rol,
+                COALESCE(AVG(p.calificacion_tienda), 0) AS promedio_calificacion,
+                COUNT(p.calificacion_tienda) AS total_calificaciones
             FROM tiendas t
             JOIN usuarios u ON t.usuario_id = u.id
+            LEFT JOIN pedidos p ON p.vendedor_id = t.usuario_id AND p.calificacion_tienda IS NOT NULL
             WHERE u.rol IN ('vendedor', 'admin')
+            GROUP BY t.usuario_id, t.nombre, t.descripcion, t.logo_url, t.abierta, t.direccion, t.telefono, u.nombre, u.rol
         `;
         const [tiendas] = await db.query(query);
         const formateadas = tiendas.map(t => ({
