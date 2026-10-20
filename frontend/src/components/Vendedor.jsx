@@ -211,7 +211,6 @@ function Vendedor() {
 
     if (!usuarioInfo) return <p style={{textAlign: 'center', padding: '50px'}}>Cargando panel de ventas... ⏳</p>;
 
-    // 📊 LÓGICA Y CÁLCULOS DE VENTAS, CALIFICACIONES Y DINERO RECAUDADO
     const misVentas = pedidos.filter(pedido => {
         const esSuVendedorDirecto = Number(pedido.vendedor_id) === Number(usuarioInfo.id);
         const tieneProdSuVendedor = obtenerDetalles(pedido.detalles).some(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
@@ -241,175 +240,180 @@ function Vendedor() {
     const estaTiendaAbierta = datosTienda?.abierta !== 0;
 
     return (
-        <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', minHeight: '100vh' }}>
+        <div style={{ padding: '15px 15px 100px 15px', fontFamily: 'sans-serif', maxWidth: '520px', margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box' }}>
             
-            {/* INTERRUPTOR PRINCIPAL: TIENDA ABIERTA / CERRADA */}
-            <div style={{ 
-                display: 'flex', 
-                justify: 'space-between', 
-                alignItems: 'center', 
-                backgroundColor: estaTiendaAbierta ? '#d4edda' : '#f8d7da', 
-                border: `2px solid ${estaTiendaAbierta ? '#28a745' : '#dc3545'}`,
-                padding: '12px 15px', 
-                borderRadius: '8px', 
-                marginBottom: '15px' 
+            {/* 🏷️ BARRITA DE SALUDO Y MODO OSCURO/CLARO */}
+            <div style={{
+                display: 'flex',
+                justify: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'var(--bg-chip, #f0f2f5)',
+                border: '1px solid var(--border-color, #e0e0e0)',
+                padding: '8px 16px',
+                borderRadius: '25px',
+                marginBottom: '15px',
+                fontSize: '14px'
             }}>
-                <div>
-                    <strong style={{ fontSize: '15px', color: estaTiendaAbierta ? '#155724' : '#721c24' }}>
-                        Estado de tu Tienda: {estaTiendaAbierta ? '🟢 ABIERTA (Recibiendo Pedidos)' : '🔴 CERRADA (No recibe compras)'}
-                    </strong>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: estaTiendaAbierta ? '#155724' : '#721c24' }}>
-                        {estaTiendaAbierta ? 'Los clientes pueden comprar tus productos normalmente.' : 'Tus productos se muestran deshabilitados en el directorio.'}
-                    </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+                    <span>Hola, {usuarioInfo.nombre || 'Vendedor'} 🥐☀️</span>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <BotonModoOscuro />
+                    <button 
+                        onClick={() => { localStorage.clear(); navigate('/login'); }} 
+                        style={{ padding: '5px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '15px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                    >
+                        Salir
+                    </button>
+                </div>
+            </div>
+
+            {/* 🏪 TARJETA CENTRADA DE LA TIENDA (DISPOSICIÓN TIPO CAPTURA EN FONDO ADAPTABLE) */}
+            <div style={{
+                backgroundColor: 'var(--card-bg, #ffffff)',
+                border: '1px solid var(--border-color, #e0e0e0)',
+                borderRadius: '16px',
+                padding: '20px',
+                textAlign: 'center',
+                marginBottom: '15px',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.06)'
+            }}>
+                <div style={{ position: 'relative', display: 'inline-block', marginBottom: '12px' }}>
+                    <img 
+                        src={datosTienda?.logo_url || 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500'} 
+                        alt="Logo" 
+                        style={{ width: '85px', height: '85px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #007bff', backgroundColor: '#fff', padding: '2px' }} 
+                    />
+                    <span style={{ position: 'absolute', bottom: '2px', right: '2px', fontSize: '18px' }}>
+                        {estaTiendaAbierta ? '🟢' : '🔴'}
+                    </span>
+                </div>
+
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '20px', fontWeight: 'bold' }}>
+                    {datosTienda?.nombre || 'Mi Tienda'}
+                </h2>
+                
+                <p style={{ margin: '0 0 8px 0', fontSize: '13px', opacity: 0.8 }}>
+                    {datosTienda?.descripcion || 'Tienda oficial en la plataforma'}
+                </p>
+
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', fontSize: '13px', marginBottom: '15px' }}>
+                    <span style={{ fontWeight: 'bold' }}>⭐ {promCalificacion > 0 ? promCalificacion.toFixed(1) : '5.0'} ({cantCalificaciones} reseñas)</span>
+                    <span style={{ color: '#28a745', fontWeight: 'bold' }}>💵 Recaudado: ${totalDineroRecaudado.toLocaleString()}</span>
+                </div>
+
+                {/* BOTÓN FULL WIDTH PARA ABRIR O CERRAR TIENDA */}
                 <button 
                     onClick={toggleEstadoTienda} 
                     style={{ 
-                        padding: '8px 14px', 
-                        backgroundColor: estaTiendaAbierta ? '#dc3545' : '#28a745', 
+                        width: '100%', 
+                        padding: '12px', 
+                        backgroundColor: estaTiendaAbierta ? '#28a745' : '#dc3545', 
                         color: 'white', 
                         border: 'none', 
-                        borderRadius: '5px', 
+                        borderRadius: '10px', 
                         fontWeight: 'bold', 
-                        cursor: 'pointer' 
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                     }}
                 >
-                    {estaTiendaAbierta ? '🔴 Cerrar Tienda' : '🟢 Abrir Tienda'}
+                    {estaTiendaAbierta ? '🟢 Tienda Abierta (Recibiendo compras)' : '🔴 Tienda Cerrada (Pausada)'}
                 </button>
             </div>
 
+            {/* 💰 TARJETA RESUMEN DE SALDOS */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '4px' }}>Por cobrar al Admin:</span>
+                    <strong style={{ fontSize: '16px', color: '#28a745' }}>${dineroAFavor.toLocaleString()}</strong>
+                </div>
+                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '12px', borderRadius: '12px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '4px' }}>Saldo Comisiones:</span>
+                    <strong style={{ fontSize: '16px', color: miSaldo <= 0 ? '#dc3545' : '#17a2b8' }}>${miSaldo.toLocaleString()}</strong>
+                </div>
+            </div>
+
             {miSaldo <= 0 && (
-                <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '15px', borderRadius: '6px', marginBottom: '20px', border: '1px solid #f5c6cb', fontWeight: 'bold' }}>
-                    ⚠️ Tu saldo para comisiones está agotado. Tus productos han sido ocultados automáticamente. Ve a "Billetera" y recarga para reactivarlos.
+                <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '12px', borderRadius: '10px', marginBottom: '15px', border: '1px solid #f5c6cb', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}>
+                    ⚠️ Saldo agotado. Recarga en "Billetera" para activar tus productos.
                 </div>
             )}
 
-            {/* ENCABEZADO PRINCIPAL CON DATOS DE TIENDA Y SALDOS */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', backgroundColor: '#6f42c1', padding: '15px', borderRadius: '8px', color: 'white' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {datosTienda?.logo_url && (
-                            <img 
-                                src={`${datosTienda.logo_url}`} 
-                                alt="Logo" 
-                                style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', border: '2px solid white' }} 
-                            />
-                        )}
-                        <div>
-                            <h2 style={{ margin: 0 }}>{datosTienda?.nombre || '🏪 Portal de Vendedor'}</h2>
-                            {datosTienda?.descripcion && <span style={{ fontSize: '12px', opacity: 0.85 }}>{datosTienda.descripcion}</span>}
-                        </div>
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <BotonModoOscuro />
-                        <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
-                    </div>
-                </div>
-
-                {/* 📈 RESUMEN DE SALDOS, VENTAS Y ESTRELLAS */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginTop: '5px' }}>
-                    <div style={{ backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px' }}>
-                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>💵 Total Recaudado en Ventas:</span>
-                        <strong style={{ fontSize: '18px', color: '#ffc107' }}>${totalDineroRecaudado.toLocaleString()}</strong>
-                    </div>
-
-                    <div style={{ backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px' }}>
-                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>⭐ Calificación Promedio:</span>
-                        <strong style={{ fontSize: '18px', color: '#ffc107' }}>
-                            {promCalificacion > 0 ? `⭐ ${promCalificacion.toFixed(1)} / 5.0 (${cantCalificaciones})` : 'Sin reseñas'}
-                        </strong>
-                    </div>
-
-                    <div style={{ backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px' }}>
-                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>Dinero a tu favor (Admin):</span>
-                        <strong style={{ fontSize: '18px', color: '#28a745' }}>${dineroAFavor.toLocaleString()}</strong>
-                    </div>
-
-                    <div style={{ backgroundColor: '#343a40', padding: '10px', borderRadius: '6px' }}>
-                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>Saldo Prepago (Comisiones):</span>
-                        <strong style={{ fontSize: '18px', color: miSaldo <= 0 ? '#dc3545' : '#17a2b8' }}>${miSaldo.toLocaleString()}</strong>
-                    </div>
-                </div>
-            </div>
-
-            {/* BARRA DE BOTONES DE NAVEGACIÓN */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-                <button onClick={() => setVistaActiva('ventas')} style={{ flex: '1 1 110px', padding: '12px 6px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'ventas' ? '#17a2b8' : '#ddd', color: vistaActiva === 'ventas' ? 'white' : '#333', cursor: 'pointer' }}>🛒 Mis Ventas</button>
-                <button onClick={() => setVistaActiva('productos')} style={{ flex: '1 1 110px', padding: '12px 6px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'productos' ? '#007bff' : '#ddd', color: vistaActiva === 'productos' ? 'white' : '#333', cursor: 'pointer' }}>📦 Mis Productos</button>
-                <button onClick={() => setVistaActiva('subir')} style={{ flex: '1 1 110px', padding: '12px 6px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'subir' ? '#28a745' : '#ddd', color: vistaActiva === 'subir' ? 'white' : '#333', cursor: 'pointer' }}>+ Subir Nuevo</button>
-                <button onClick={() => setVistaActiva('billetera')} style={{ flex: '1 1 110px', padding: '12px 6px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'billetera' ? '#ffc107' : '#ddd', color: '#333', cursor: 'pointer' }}>💰 Billetera</button>
-                <button onClick={() => setVistaActiva('tienda')} style={{ flex: '1 1 110px', padding: '12px 6px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'tienda' ? '#6f42c1' : '#ddd', color: vistaActiva === 'tienda' ? 'white' : '#333', cursor: 'pointer' }}>🏪 Mi Tienda</button>
-                <button onClick={() => setVistaActiva('validar_pagos')} style={{ flex: '1 1 110px', padding: '12px 6px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'validar_pagos' ? '#e83e8c' : '#ddd', color: vistaActiva === 'validar_pagos' ? 'white' : '#333', cursor: 'pointer' }}>💳 Validar Pagos</button>
-            </div>
-
-            {/* PESTAÑA: MIS VENTAS */}
+            {/* 🛒 VISTA DE CONTENIDO: MIS VENTAS */}
             {vistaActiva === 'ventas' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    {/* SUB-SELECTOR DE PESTAÑA DE VENTAS */}
-                    <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #ddd', pb: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--card-bg, #ffffff)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-color, #e0e0e0)' }}>
                         <button 
                             onClick={() => setSubVistaVentas('activas')}
                             style={{ 
-                                padding: '8px 16px', 
+                                flex: 1, 
+                                padding: '8px', 
                                 border: 'none', 
-                                borderBottom: subVistaVentas === 'activas' ? '3px solid #17a2b8' : 'none', 
-                                backgroundColor: 'transparent', 
+                                borderRadius: '8px', 
+                                backgroundColor: subVistaVentas === 'activas' ? '#007bff' : 'transparent', 
+                                color: subVistaVentas === 'activas' ? 'white' : 'inherit', 
                                 fontWeight: 'bold', 
-                                color: subVistaVentas === 'activas' ? '#17a2b8' : '#666',
-                                cursor: 'pointer'
+                                fontSize: '13px',
+                                cursor: 'pointer' 
                             }}
                         >
-                            🛵 Pedidos Activos ({ventasActivas.length})
+                            🛵 Activos ({ventasActivas.length})
                         </button>
                         <button 
                             onClick={() => setSubVistaVentas('historial')}
                             style={{ 
-                                padding: '8px 16px', 
+                                flex: 1, 
+                                padding: '8px', 
                                 border: 'none', 
-                                borderBottom: subVistaVentas === 'historial' ? '3px solid #17a2b8' : 'none', 
-                                backgroundColor: 'transparent', 
+                                borderRadius: '8px', 
+                                backgroundColor: subVistaVentas === 'historial' ? '#007bff' : 'transparent', 
+                                color: subVistaVentas === 'historial' ? 'white' : 'inherit', 
                                 fontWeight: 'bold', 
-                                color: subVistaVentas === 'historial' ? '#17a2b8' : '#666',
-                                cursor: 'pointer'
+                                fontSize: '13px',
+                                cursor: 'pointer' 
                             }}
                         >
-                            📜 Ventas Realizadas y Reseñas ({ventasEntregadas.length})
+                            📜 Historial ({ventasEntregadas.length})
                         </button>
                     </div>
 
-                    {/* VISTA 1: PEDIDOS ACTIVOS */}
                     {subVistaVentas === 'activas' && (
                         <div>
-                            {ventasActivas.length === 0 ? <p style={{ color: '#666' }}>No hay pedidos pendientes por despachar.</p> : (
+                            {ventasActivas.length === 0 ? (
+                                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', textAlign: 'center', opacity: 0.7, border: '1px solid var(--border-color, #e0e0e0)' }}>
+                                    No hay pedidos pendientes por despachar. ☕
+                                </div>
+                            ) : (
                                 ventasActivas.map(pedido => {
                                     const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
                                     return (
-                                        <div key={pedido.id} style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                        <div key={pedido.id} style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', borderRadius: '14px', padding: '15px', marginBottom: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
                                                 <div>
-                                                    <strong style={{ fontSize: '18px', color: '#6f42c1' }}>Pedido #{pedido.id}</strong><br/>
-                                                    <span style={{ fontSize: '13px', color: '#666' }}>{new Date(pedido.fecha_creacion).toLocaleString()}</span>
+                                                    <strong style={{ fontSize: '16px', color: '#007bff' }}>Pedido #{pedido.id}</strong><br/>
+                                                    <span style={{ fontSize: '11px', opacity: 0.6 }}>{new Date(pedido.fecha_creacion).toLocaleString()}</span>
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <span style={{ display: 'block', fontWeight: 'bold' }}>Cliente: {pedido.cliente}</span>
-                                                    <span style={{ fontSize: '12px', color: '#007bff', fontWeight: 'bold' }}>{pedido.estado.replace('_', ' ').toUpperCase()}</span>
+                                                    <span style={{ display: 'block', fontWeight: 'bold', fontSize: '13px' }}>{pedido.cliente}</span>
+                                                    <span style={{ fontSize: '11px', color: '#ffc107', fontWeight: 'bold' }}>{pedido.estado.replace('_', ' ').toUpperCase()}</span>
                                                 </div>
                                             </div>
-                                            <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '6px', border: '1px solid #eee' }}>
-                                                <strong style={{ display: 'block', marginBottom: '8px' }}>Productos a preparar:</strong>
+
+                                            <div style={{ marginBottom: '10px' }}>
                                                 {misItems.map((item, i) => (
-                                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-                                                        <img src={item.imagen} alt="" style={{ width: '30px', height: '30px', borderRadius: '4px', objectFit: 'cover' }} />
+                                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', margin: '4px 0' }}>
+                                                        <img src={item.imagen} alt="" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} />
                                                         <span><strong style={{ color: '#007bff' }}>{item.cantidad}x</strong> {item.nombre}</span>
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                {pedido.estado === 'pendiente' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'en_preparacion')} style={{ flex: 1, padding: '12px', backgroundColor: '#fd7e14', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>👨‍🍳 Empezar a Preparar</button>}
-                                                {pedido.estado === 'en_preparacion' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'listo_para_entrega')} style={{ flex: 1, padding: '12px', backgroundColor: '#6f42c1', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Empacado y Listo</button>}
-                                                {pedido.estado === 'listo_para_entrega' && <div style={{ flex: 1, textAlign: 'center', padding: '12px', backgroundColor: '#e9ecef', color: '#555', borderRadius: '4px', fontWeight: 'bold' }}>⏳ Esperando al Domiciliario...</div>}
-                                                {pedido.estado === 'llevando_tu_pedido' && <div style={{ flex: 1, textAlign: 'center', padding: '12px', backgroundColor: '#cce5ff', color: '#004085', borderRadius: '4px', fontWeight: 'bold', border: '1px solid #b8daff' }}>🛵 El domiciliario lo está llevando</div>}
+
+                                            <div style={{ marginTop: '10px' }}>
+                                                {pedido.estado === 'pendiente' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'en_preparacion')} style={{ width: '100%', padding: '10px', backgroundColor: '#fd7e14', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>👨‍🍳 Empezar a Preparar</button>}
+                                                {pedido.estado === 'en_preparacion' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'listo_para_entrega')} style={{ width: '100%', padding: '10px', backgroundColor: '#6f42c1', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Empacado y Listo</button>}
+                                                {pedido.estado === 'listo_para_entrega' && <div style={{ textAlign: 'center', padding: '10px', backgroundColor: '#e9ecef', color: '#555', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>⏳ Esperando al Domiciliario...</div>}
+                                                {pedido.estado === 'llevando_tu_pedido' && <div style={{ textAlign: 'center', padding: '10px', backgroundColor: '#cce5ff', color: '#004085', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>🛵 En camino con el repartidor</div>}
                                             </div>
                                         </div>
                                     );
@@ -418,51 +422,38 @@ function Vendedor() {
                         </div>
                     )}
 
-                    {/* VISTA 2: HISTORIAL DE VENTAS Y OPINIONES/ESTRELLAS */}
                     {subVistaVentas === 'historial' && (
                         <div>
-                            {ventasEntregadas.length === 0 ? <p style={{ color: '#666' }}>Aún no hay ventas entregadas registradas.</p> : (
+                            {ventasEntregadas.length === 0 ? (
+                                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', padding: '25px', borderRadius: '12px', textAlign: 'center', opacity: 0.7, border: '1px solid var(--border-color, #e0e0e0)' }}>
+                                    Aún no hay ventas entregadas registradas.
+                                </div>
+                            ) : (
                                 ventasEntregadas.map(pedido => {
                                     const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
                                     const subtotalVendedor = misItems.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
                                     const tieneCalificacion = pedido.calificacion_tienda !== null && pedido.calificacion_tienda !== undefined;
 
                                     return (
-                                        <div key={pedido.id} style={{ padding: '15px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
+                                        <div key={pedido.id} style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '6px', marginBottom: '6px' }}>
                                                 <div>
-                                                    <strong style={{ fontSize: '16px' }}>Pedido #{pedido.id}</strong>
-                                                    <span style={{ fontSize: '12px', color: '#888', marginLeft: '10px' }}>{new Date(pedido.fecha_creacion).toLocaleDateString()}</span>
+                                                    <strong style={{ fontSize: '14px' }}>Pedido #{pedido.id}</strong>
+                                                    <span style={{ fontSize: '11px', opacity: 0.6, marginLeft: '8px' }}>{new Date(pedido.fecha_creacion).toLocaleDateString()}</span>
                                                 </div>
                                                 <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#28a745' }}>
                                                     +${(subtotalVendedor || Number(pedido.total)).toLocaleString()}
                                                 </span>
                                             </div>
 
-                                            <div style={{ fontSize: '13px', color: '#555', marginBottom: '8px' }}>
-                                                <strong>Cliente:</strong> {pedido.cliente} | <strong>Método:</strong> {pedido.metodo_pago.toUpperCase()}
-                                            </div>
-
-                                            {/* ⭐ CALIFICACIÓN Y COMENTARIO DEL CLIENTE */}
-                                            <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '6px', border: '1px solid #ffeeba', marginTop: '10px' }}>
-                                                <strong style={{ fontSize: '13px', color: '#856404', display: 'block' }}>
-                                                    ⭐ Calificación de la Tienda:
-                                                </strong>
-                                                {tieneCalificacion ? (
-                                                    <div>
-                                                        <span style={{ fontSize: '16px', color: '#ffc107', fontWeight: 'bold' }}>
-                                                            {'⭐'.repeat(pedido.calificacion_tienda)} ({pedido.calificacion_tienda}/5)
-                                                        </span>
-                                                        {pedido.comentario_calificacion && (
-                                                            <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontStyle: 'italic', color: '#856404' }}>
-                                                                💬 "{pedido.comentario_calificacion}"
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span style={{ fontSize: '12px', color: '#856404', fontStyle: 'italic' }}>
-                                                        ⏳ El cliente no ha calificado este pedido todavía.
-                                                    </span>
+                                            <div style={{ backgroundColor: '#fff3cd', padding: '8px', borderRadius: '6px', border: '1px solid #ffeeba', fontSize: '12px', color: '#856404' }}>
+                                                <span style={{ display: 'block', fontWeight: 'bold' }}>
+                                                    ⭐ Calificación Recibida: {tieneCalificacion ? `${'⭐'.repeat(pedido.calificacion_tienda)} (${pedido.calificacion_tienda}/5)` : 'Sin calificar'}
+                                                </span>
+                                                {pedido.comentario_calificacion && (
+                                                    <p style={{ margin: '2px 0 0 0', fontStyle: 'italic' }}>
+                                                        💬 "{pedido.comentario_calificacion}"
+                                                    </p>
                                                 )}
                                             </div>
                                         </div>
@@ -471,84 +462,81 @@ function Vendedor() {
                             )}
                         </div>
                     )}
-
                 </div>
             )}
 
-            {/* PESTAÑA: BILLETERA */}
+            {/* 💰 VISTA DE BILLETERA Y RECARGAS */}
             {vistaActiva === 'billetera' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div style={{ backgroundColor: '#d4edda', padding: '20px', borderRadius: '8px', border: '1px solid #c3e6cb' }}>
-                        <h3 style={{ marginTop: 0, color: '#155724' }}>📥 Mi Cuenta de Cobro (Dónde recibo dinero)</h3>
-                        <p style={{ fontSize: '14px', color: '#155724' }}>Escribe la cuenta donde el Administrador debe enviarte las ganancias de tus ventas (Ej: Nequi 3001234567).</p>
-                        <form onSubmit={guardarCuentaRetiro} style={{ display: 'flex', gap: '10px' }}>
-                            <input type="text" placeholder="Ej: Daviplata - 312..." value={cuentaRetiro} onChange={e => setCuentaRetiro(e.target.value)} required style={{ padding: '12px', flex: 1, borderRadius: '4px', border: '1px solid #ccc' }} />
-                            <button type="submit" style={{ padding: '12px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Guardar</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                        <h3 style={{ marginTop: 0, fontSize: '16px', color: '#28a745' }}>📥 Cuenta de Cobro</h3>
+                        <p style={{ fontSize: '12px', opacity: 0.7 }}>Cuenta donde el Administrador te enviará tus ganancias acumuladas.</p>
+                        <form onSubmit={guardarCuentaRetiro} style={{ display: 'flex', gap: '8px' }}>
+                            <input type="text" placeholder="Ej: Nequi 3001234567..." value={cuentaRetiro} onChange={e => setCuentaRetiro(e.target.value)} required style={{ padding: '10px', flex: 1, borderRadius: '8px', border: '1px solid #ccc' }} />
+                            <button type="submit" style={{ padding: '10px 15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>Guardar</button>
                         </form>
                     </div>
 
-                    <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                        <h3 style={{ marginTop: 0, color: '#007bff' }}>💳 Recargar Saldo Prepago (Para pagar comisiones)</h3>
+                    <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                        <h3 style={{ marginTop: 0, fontSize: '16px', color: '#007bff' }}>💳 Recargar Saldo Prepago</h3>
                         {bancos.length > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                                 {bancos.map(b => (
-                                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '15px', backgroundColor: '#e2f3f5', padding: '10px', borderRadius: '6px', border: '1px solid #17a2b8' }}>
-                                        {b.imagen ? <img src={b.imagen} alt="Banco" style={{ height: '35px', width: '35px', borderRadius: '4px', objectFit: 'contain', backgroundColor: 'white', padding: '2px', border: '1px solid #ccc' }} /> : <span style={{ fontSize: '25px' }}>🏦</span>}
-                                        <div>
-                                            <strong style={{ display: 'block', fontSize: '15px', color: '#0c5460' }}>{b.nombre}</strong>
-                                            <span style={{ fontSize: '13px', color: '#0c5460' }}>Cuenta: <strong>{b.numero}</strong></span>
+                                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#e2f3f5', padding: '8px 12px', borderRadius: '8px', border: '1px solid #17a2b8' }}>
+                                        {b.imagen ? <img src={b.imagen} alt="" style={{ height: '30px', width: '30px', borderRadius: '4px', objectFit: 'contain' }} /> : <span>🏦</span>}
+                                        <div style={{ fontSize: '12px', color: '#0c5460' }}>
+                                            <strong style={{ display: 'block' }}>{b.nombre}</strong>
+                                            <span>Número: {b.numero}</span>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <p style={{ color: '#dc3545', fontWeight: 'bold', fontSize: '14px', backgroundColor: '#f8d7da', padding: '10px', borderRadius: '4px' }}>⚠️ El administrador aún no ha configurado una cuenta.</p>
-                        )}
-                        <form onSubmit={solicitarRecarga} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <select value={formRecarga.banco_destino} onChange={e => setFormRecarga({...formRecarga, banco_destino: e.target.value})} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #007bff', fontWeight: 'bold', color: '#007bff' }}>
-                                <option value="">Selecciona a qué cuenta transferiste...</option>
+                        ) : null}
+                        <form onSubmit={solicitarRecarga} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <select value={formRecarga.banco_destino} onChange={e => setFormRecarga({...formRecarga, banco_destino: e.target.value})} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }}>
+                                <option value="">Selecciona Banco...</option>
                                 {bancos.map(b => <option key={b.id} value={b.nombre}>{b.nombre}</option>)}
                             </select>
-                            <input type="number" placeholder="Monto transferido" value={formRecarga.monto} onChange={e => setFormRecarga({...formRecarga, monto: e.target.value})} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                            <input type="text" placeholder="Referencia" value={formRecarga.referencia} onChange={e => setFormRecarga({...formRecarga, referencia: e.target.value})} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                            <button type="submit" disabled={bancos.length === 0} style={{ padding: '12px', backgroundColor: bancos.length > 0 ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>Enviar Comprobante</button>
+                            <input type="number" placeholder="Monto transferido" value={formRecarga.monto} onChange={e => setFormRecarga({...formRecarga, monto: e.target.value})} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }} />
+                            <input type="text" placeholder="Referencia de pago" value={formRecarga.referencia} onChange={e => setFormRecarga({...formRecarga, referencia: e.target.value})} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }} />
+                            <button type="submit" disabled={bancos.length === 0} style={{ padding: '12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>Enviar Comprobante</button>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* PESTAÑA: SUBIR NUEVO */}
+            {/* 📸 VISTA DE SUBIR NUEVO PRODUCTO */}
             {vistaActiva === 'subir' && (
-                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                    <h3 style={{ marginTop: 0 }}>Tomar Foto y Vender 📸</h3>
-                    <form onSubmit={subirProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <input type="text" placeholder="Nombre del producto" value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        <input type="number" placeholder="Precio de venta al público" value={nuevoPrecio} onChange={e => setNuevoPrecio(e.target.value)} required style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }} />
-                        <div style={{ padding: '15px', borderRadius: '6px', textAlign: 'center', border: '1px dashed #ccc' }}>
-                            <strong style={{ display: 'block', marginBottom: '10px' }}>Subir Foto desde Galería o Cámara</strong>
-                            <input type="file" accept="image/*" capture="environment" onChange={e => setArchivoFoto(e.target.files[0])} style={{ width: '100%' }} />
+                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                    <h3 style={{ marginTop: 0, fontSize: '16px' }}>Publicar Nuevo Producto 📸</h3>
+                    <form onSubmit={subirProducto} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <input type="text" placeholder="Nombre del producto" value={nuevoNombre} onChange={e => setNuevoNombre(e.target.value)} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }} />
+                        <input type="number" placeholder="Precio al público ($)" value={nuevoPrecio} onChange={e => setNuevoPrecio(e.target.value)} required style={{ padding: '10px', borderRadius: '8px', border: '1px solid #ccc' }} />
+                        <div style={{ padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px dashed #ccc' }}>
+                            <strong style={{ display: 'block', marginBottom: '6px', fontSize: '12px', opacity: 0.7 }}>Foto del Producto</strong>
+                            <input type="file" accept="image/*" capture="environment" onChange={e => setArchivoFoto(e.target.files[0])} style={{ width: '100%', fontSize: '12px' }} />
                         </div>
-                        <button type="submit" style={{ padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', fontSize: '16px' }}>Subir Producto</button>
+                        <button type="submit" style={{ padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px' }}>Publicar Producto</button>
                     </form>
                 </div>
             )}
 
-            {/* PESTAÑA: MIS PRODUCTOS */}
+            {/* 📦 VISTA DE PRODUCTOS PUBLICADOS */}
             {vistaActiva === 'productos' && (
-                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                    <h3 style={{ marginTop: 0 }}>Mis Productos Activos</h3>
-                    {misProductos.length === 0 ? <p>Aún no has publicado nada.</p> : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
+                    <h3 style={{ marginTop: 0, fontSize: '16px' }}>Mis Productos Publicados</h3>
+                    {misProductos.length === 0 ? <p style={{ opacity: 0.7, fontSize: '13px' }}>Aún no has publicado nada.</p> : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {misProductos.map(p => (
-                                <div key={p.id} style={{ border: '1px solid #eee', padding: '10px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <img src={p.imagen} alt={p.nombre} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '4px', opacity: p.disponible ? 1 : 0.4 }} />
+                                <div key={p.id} style={{ border: '1px solid #eee', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <img src={p.imagen} alt="" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px', opacity: p.disponible ? 1 : 0.4 }} />
                                     <div style={{ flex: 1 }}>
-                                        <strong style={{ display: 'block', color: p.disponible ? 'inherit' : '#999' }}>{p.nombre}</strong>
-                                        <span style={{ color: p.disponible ? '#28a745' : '#999', fontWeight: 'bold' }}>${Number(p.precio).toLocaleString()}</span>
+                                        <strong style={{ display: 'block', fontSize: '14px', opacity: p.disponible ? 1 : 0.5 }}>{p.nombre}</strong>
+                                        <span style={{ color: p.disponible ? '#28a745' : '#888', fontWeight: 'bold', fontSize: '13px' }}>${Number(p.precio).toLocaleString()}</span>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                        <button onClick={() => toggleDisp(p.id, p.disponible)} style={{ padding: '5px', backgroundColor: p.disponible ? '#28a745' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px' }}>{p.disponible ? 'Pausar' : 'Activar'}</button>
-                                        <button onClick={() => eliminar(p.id)} style={{ padding: '5px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px' }}>Borrar</button>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button onClick={() => toggleDisp(p.id, p.disponible)} style={{ padding: '6px 10px', backgroundColor: p.disponible ? '#28a745' : '#6c757d', color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>{p.disponible ? 'Pausar' : 'Activar'}</button>
+                                        <button onClick={() => eliminar(p.id)} style={{ padding: '6px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>Borrar</button>
                                     </div>
                                 </div>
                             ))}
@@ -557,19 +545,152 @@ function Vendedor() {
                 </div>
             )}
 
-            {/* PESTAÑA: CONFIGURACIÓN DE LA TIENDA */}
+            {/* 🏪 CONFIGURAR DATOS DE LA TIENDA */}
             {vistaActiva === 'tienda' && (
-                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                     <ConfigurarTienda usuarioId={usuarioInfo.id} />
                 </div>
             )}
 
-            {/* PESTAÑA: VALIDACIÓN Y APROBACIÓN DE PAGOS */}
+            {/* 💳 APROBAR PAGOS */}
             {vistaActiva === 'validar_pagos' && (
-                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                <div style={{ backgroundColor: 'var(--card-bg, #ffffff)', border: '1px solid var(--border-color, #e0e0e0)', padding: '15px', borderRadius: '14px' }}>
                     <VendedorAprobarPago />
                 </div>
             )}
+
+            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR (COMPATIBLE CON MODO CLARO Y MODO OSCURO) */}
+            <div style={{
+                position: 'fixed',
+                bottom: '15px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 'calc(100% - 30px)',
+                maxWidth: '480px',
+                backgroundColor: 'var(--card-bg, #ffffff)',
+                border: '1px solid var(--border-color, #e0e0e0)',
+                borderRadius: '30px',
+                padding: '6px 12px',
+                display: 'flex',
+                justify: 'space-around',
+                alignItems: 'center',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                zIndex: 1000
+            }}>
+                <button 
+                    onClick={() => setVistaActiva('ventas')} 
+                    style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'ventas' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'ventas' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        fontSize: '10px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>🛒</span>
+                    Ventas
+                </button>
+
+                <button 
+                    onClick={() => setVistaActiva('productos')} 
+                    style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'productos' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'productos' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        fontSize: '10px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>📦</span>
+                    Productos
+                </button>
+
+                <button 
+                    onClick={() => setVistaActiva('subir')} 
+                    style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'subir' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'subir' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        fontSize: '10px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>➕</span>
+                    Publicar
+                </button>
+
+                <button 
+                    onClick={() => setVistaActiva('billetera')} 
+                    style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'billetera' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'billetera' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        fontSize: '10px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>💰</span>
+                    Billetera
+                </button>
+
+                <button 
+                    onClick={() => setVistaActiva('tienda')} 
+                    style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'tienda' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'tienda' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        fontSize: '10px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>🏪</span>
+                    Tienda
+                </button>
+
+                <button 
+                    onClick={() => setVistaActiva('validar_pagos')} 
+                    style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: vistaActiva === 'validar_pagos' ? '#007bff' : 'inherit', 
+                        opacity: vistaActiva === 'validar_pagos' ? 1 : 0.6,
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        fontSize: '10px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer' 
+                    }}
+                >
+                    <span style={{ fontSize: '18px' }}>💳</span>
+                    Pagos
+                </button>
+            </div>
 
         </div>
     );
