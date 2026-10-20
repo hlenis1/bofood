@@ -239,6 +239,15 @@ function Vendedor() {
 
     const estaTiendaAbierta = datosTienda?.abierta !== 0;
 
+    const opcionesNavegacion = [
+        { id: 'ventas', label: 'Ventas', icon: '🛒' },
+        { id: 'productos', label: 'Productos', icon: '📦' },
+        { id: 'subir', label: 'Publicar', icon: '➕' },
+        { id: 'billetera', label: 'Billetera', icon: '💰' },
+        { id: 'tienda', label: 'Tienda', icon: '🏪' },
+        { id: 'validar_pagos', label: 'Pagos', icon: '💳' },
+    ];
+
     return (
         <div style={{ padding: '15px 15px 100px 15px', fontFamily: 'sans-serif', maxWidth: '520px', margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box' }}>
             
@@ -268,7 +277,7 @@ function Vendedor() {
                 </div>
             </div>
 
-            {/* 🏪 TARJETA CENTRADA DE LA TIENDA (DISPOSICIÓN TIPO CAPTURA EN FONDO ADAPTABLE) */}
+            {/* 🏪 TARJETA CENTRADA DE LA TIENDA */}
             <div style={{
                 backgroundColor: 'var(--card-bg, #ffffff)',
                 border: '1px solid var(--border-color, #e0e0e0)',
@@ -302,7 +311,6 @@ function Vendedor() {
                     <span style={{ color: '#28a745', fontWeight: 'bold' }}>💵 Recaudado: ${totalDineroRecaudado.toLocaleString()}</span>
                 </div>
 
-                {/* BOTÓN FULL WIDTH PARA ABRIR O CERRAR TIENDA */}
                 <button 
                     onClick={toggleEstadoTienda} 
                     style={{ 
@@ -358,7 +366,7 @@ function Vendedor() {
                                 cursor: 'pointer' 
                             }}
                         >
-                            🛵 Activos ({ventasActivas.length})
+                            javascriptActivos ({ventasActivas.length})
                         </button>
                         <button 
                             onClick={() => setSubVistaVentas('historial')}
@@ -559,7 +567,7 @@ function Vendedor() {
                 </div>
             )}
 
-            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR (COMPATIBLE CON MODO CLARO Y MODO OSCURO) */}
+            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR CON CENTRADO SIMÉTRICO Y EXACTO */}
             <div style={{
                 position: 'fixed',
                 bottom: '15px',
@@ -570,126 +578,38 @@ function Vendedor() {
                 backgroundColor: 'var(--card-bg, #ffffff)',
                 border: '1px solid var(--border-color, #e0e0e0)',
                 borderRadius: '30px',
-                padding: '6px 12px',
+                padding: '6px 4px',
                 display: 'flex',
-                justify: 'space-around',
+                justify: 'space-evenly',
                 alignItems: 'center',
                 boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
                 zIndex: 1000
             }}>
-                <button 
-                    onClick={() => setVistaActiva('ventas')} 
-                    style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: vistaActiva === 'ventas' ? '#007bff' : 'inherit', 
-                        opacity: vistaActiva === 'ventas' ? 1 : 0.6,
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        fontSize: '10px', 
-                        fontWeight: 'bold',
-                        cursor: 'pointer' 
-                    }}
-                >
-                    <span style={{ fontSize: '18px' }}>🛒</span>
-                    Ventas
-                </button>
-
-                <button 
-                    onClick={() => setVistaActiva('productos')} 
-                    style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: vistaActiva === 'productos' ? '#007bff' : 'inherit', 
-                        opacity: vistaActiva === 'productos' ? 1 : 0.6,
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        fontSize: '10px', 
-                        fontWeight: 'bold',
-                        cursor: 'pointer' 
-                    }}
-                >
-                    <span style={{ fontSize: '18px' }}>📦</span>
-                    Productos
-                </button>
-
-                <button 
-                    onClick={() => setVistaActiva('subir')} 
-                    style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: vistaActiva === 'subir' ? '#007bff' : 'inherit', 
-                        opacity: vistaActiva === 'subir' ? 1 : 0.6,
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        fontSize: '10px', 
-                        fontWeight: 'bold',
-                        cursor: 'pointer' 
-                    }}
-                >
-                    <span style={{ fontSize: '18px' }}>➕</span>
-                    Publicar
-                </button>
-
-                <button 
-                    onClick={() => setVistaActiva('billetera')} 
-                    style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: vistaActiva === 'billetera' ? '#007bff' : 'inherit', 
-                        opacity: vistaActiva === 'billetera' ? 1 : 0.6,
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        fontSize: '10px', 
-                        fontWeight: 'bold',
-                        cursor: 'pointer' 
-                    }}
-                >
-                    <span style={{ fontSize: '18px' }}>💰</span>
-                    Billetera
-                </button>
-
-                <button 
-                    onClick={() => setVistaActiva('tienda')} 
-                    style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: vistaActiva === 'tienda' ? '#007bff' : 'inherit', 
-                        opacity: vistaActiva === 'tienda' ? 1 : 0.6,
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        fontSize: '10px', 
-                        fontWeight: 'bold',
-                        cursor: 'pointer' 
-                    }}
-                >
-                    <span style={{ fontSize: '18px' }}>🏪</span>
-                    Tienda
-                </button>
-
-                <button 
-                    onClick={() => setVistaActiva('validar_pagos')} 
-                    style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: vistaActiva === 'validar_pagos' ? '#007bff' : 'inherit', 
-                        opacity: vistaActiva === 'validar_pagos' ? 1 : 0.6,
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        fontSize: '10px', 
-                        fontWeight: 'bold',
-                        cursor: 'pointer' 
-                    }}
-                >
-                    <span style={{ fontSize: '18px' }}>💳</span>
-                    Pagos
-                </button>
+                {opcionesNavegacion.map((item) => (
+                    <button 
+                        key={item.id}
+                        onClick={() => setVistaActiva(item.id)} 
+                        style={{ 
+                            flex: 1,
+                            background: 'none', 
+                            border: 'none', 
+                            color: vistaActiva === item.id ? '#007bff' : 'inherit', 
+                            opacity: vistaActiva === item.id ? 1 : 0.6,
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            textAlign: 'center',
+                            fontSize: '10px', 
+                            fontWeight: 'bold',
+                            padding: '4px 0',
+                            cursor: 'pointer' 
+                        }}
+                    >
+                        <span style={{ fontSize: '18px', lineHeight: '1', marginBottom: '3px' }}>{item.icon}</span>
+                        <span style={{ lineHeight: '1' }}>{item.label}</span>
+                    </button>
+                ))}
             </div>
 
         </div>
