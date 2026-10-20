@@ -15,7 +15,7 @@ const calcularDistancia = (lat1, lon1, lat2, lon2) => {
 };
 
 const obtenerDetalles = (d) => { 
-    try { return JSON.parse(d); } catch (e) { return []; } 
+    try { return typeof d === 'string' ? JSON.parse(d) : (d || []); } catch (e) { return []; } 
 };
 
 const parseDireccion = (dirRaw) => {
@@ -210,8 +210,17 @@ function Domiciliario() {
     const pedidosActivos = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'listo_para_entrega' || (p.estado === 'llevando_tu_pedido' && Number(p.domiciliario_id) === Number(usuarioInfo.id))) : [];
     const historialEntregas = Array.isArray(pedidos) ? pedidos.filter(p => p.estado === 'entregado' && Number(p.domiciliario_id) === Number(usuarioInfo.id)) : [];
 
+    // ⭐ CÁLCULO DE CALIFICACIÓN PROMEDIO Y RESEÑAS RECIBIDAS DEL REPARTIDOR
+    const entregadosConCalificacion = historialEntregas.filter(p => p.calificacion_domiciliario !== null && p.calificacion_domiciliario !== undefined);
+    const promCalificacionDomi = entregadosConCalificacion.length > 0
+        ? entregadosConCalificacion.reduce((acc, p) => acc + Number(p.calificacion_domiciliario), 0) / entregadosConCalificacion.length
+        : 0;
+    const cantCalificacionesDomi = entregadosConCalificacion.length;
+
     return (
         <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', minHeight: '100vh' }}>
+            
+            {/* ENCABEZADO CON SALDO Y ESTRELLAS PROMEDIO */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', backgroundColor: '#343a40', padding: '15px', borderRadius: '8px', color: 'white' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ margin: 0, color: '#e83e8c' }}>🛵 Repartidor</h2>
@@ -220,15 +229,24 @@ function Domiciliario() {
                         <button onClick={cerrarSesion} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
                     </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#212529', padding: '10px', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '16px' }}>Mi Billetera / Saldo:</span>
-                    <strong style={{ fontSize: '22px', color: miSaldo < 2000 ? '#dc3545' : '#28a745' }}>${miSaldo.toLocaleString()}</strong>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#212529', padding: '10px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '14px' }}>Mi Billetera / Saldo:</span>
+                        <strong style={{ fontSize: '20px', color: miSaldo < 2000 ? '#dc3545' : '#28a745' }}>${miSaldo.toLocaleString()}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#212529', padding: '10px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '14px' }}>⭐ Calificación Repartidor:</span>
+                        <strong style={{ fontSize: '16px', color: '#ffc107' }}>
+                            {promCalificacionDomi > 0 ? `⭐ ${promCalificacionDomi.toFixed(1)} / 5.0 (${cantCalificacionesDomi})` : 'Sin calificaciones'}
+                        </strong>
+                    </div>
                 </div>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                 <button onClick={() => setVistaActiva('pedidos')} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'pedidos' ? '#007bff' : '#ddd', color: vistaActiva === 'pedidos' ? 'white' : '#333', cursor: 'pointer' }}>📦 Entregas Activas</button>
-                <button onClick={() => setVistaActiva('billetera')} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'billetera' ? '#28a745' : '#ddd', color: vistaActiva === 'billetera' ? 'white' : '#333', cursor: 'pointer' }}>💰 Billetera y Ganancias</button>
+                <button onClick={() => setVistaActiva('billetera')} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '5px', border: 'none', backgroundColor: vistaActiva === 'billetera' ? '#28a745' : '#ddd', color: vistaActiva === 'billetera' ? 'white' : '#333', cursor: 'pointer' }}>💰 Billetera y Reseñas</button>
             </div>
 
             {vistaActiva === 'billetera' && (
@@ -281,16 +299,43 @@ function Domiciliario() {
                     </div>
 
                     <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                        <h3 style={{ marginTop: 0, color: '#007bff' }}>Historial de Ganancias (Entregados)</h3>
+                        <h3 style={{ marginTop: 0, color: '#007bff' }}>Historial de Ganancias y Reseñas</h3>
                         {historialEntregas.length === 0 ? <p style={{ fontSize: '14px', color: '#666' }}>Aún no has entregado pedidos.</p> : (
-                            historialEntregas.slice(0, 10).map(p => {
+                            historialEntregas.slice(0, 15).map(p => {
                                 const neto = Number(p.costo_domicilio) - Number(p.comision_cobrada || 0);
+                                const tieneCalificacion = p.calificacion_domiciliario !== null && p.calificacion_domiciliario !== undefined;
                                 return (
-                                <div key={p.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid #eee', padding: '10px 0', fontSize: '14px' }}>
-                                    <strong>Pedido #{p.id} <span style={{ float: 'right', color: '#28a745' }}>Ganancia Neta: ${neto.toLocaleString()}</span></strong>
-                                    <span style={{ color: '#666', fontSize: '12px' }}>
+                                <div key={p.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid #eee', padding: '12px 0', fontSize: '14px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                        <strong>Pedido #{p.id}</strong>
+                                        <span style={{ color: '#28a745', fontWeight: 'bold' }}>Ganancia Neta: ${neto.toLocaleString()}</span>
+                                    </div>
+                                    <span style={{ color: '#666', fontSize: '12px', marginBottom: '8px' }}>
                                         Costo Domicilio: ${Number(p.costo_domicilio).toLocaleString()} | Comisión Plt: -${Number(p.comision_cobrada || 0).toLocaleString()}
                                     </span>
+
+                                    {/* ⭐ CALIFICACIÓN Y RESEÑA DEL CLIENTE AL REPARTIDOR */}
+                                    <div style={{ backgroundColor: '#fff3cd', padding: '8px 10px', borderRadius: '6px', border: '1px solid #ffeeba' }}>
+                                        <strong style={{ fontSize: '12px', color: '#856404', display: 'block', marginBottom: '2px' }}>
+                                            ⭐ Calificación del Servicio de Entrega:
+                                        </strong>
+                                        {tieneCalificacion ? (
+                                            <div>
+                                                <span style={{ fontSize: '14px', color: '#ffc107', fontWeight: 'bold' }}>
+                                                    {'⭐'.repeat(p.calificacion_domiciliario)} ({p.calificacion_domiciliario}/5)
+                                                </span>
+                                                {p.comentario_calificacion && (
+                                                    <p style={{ margin: '3px 0 0 0', fontSize: '12px', fontStyle: 'italic', color: '#856404' }}>
+                                                        💬 "{p.comentario_calificacion}"
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span style={{ fontSize: '12px', color: '#856404', fontStyle: 'italic' }}>
+                                                ⏳ El cliente aún no ha calificado la entrega.
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             )})
                         )}
@@ -324,7 +369,6 @@ function Domiciliario() {
                         return (
                         <div key={pedido.id} style={{ border: esMiViaje ? '2px solid #007bff' : '1px solid #ddd', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
                             
-                            {/* 🟢 BOTONES DIRECTOS DE ACCIÓN RÁPIDA (VISIBLES INCLUSO CON LA TARJETA CONTRAÍDA) */}
                             {esMiViaje && (
                                 <div style={{ backgroundColor: '#1e2d3d', padding: '10px 15px', borderBottom: '1px solid #17a2b8', display: 'flex', gap: '10px' }}>
                                     <button 
@@ -478,7 +522,7 @@ function Domiciliario() {
                                         </div>
                                     )}
 
-                                    {/* 💬 SECCIÓN CHAT Y ESTADOS RÁPIDOS EN TIEMPO REAL CON EL CLIENTE */}
+                                    {/* 💬 CHAT EN VIVO CON EL CLIENTE */}
                                     {esMiViaje && (
                                         <div style={{ backgroundColor: '#1e2d3d', border: '1px solid #17a2b8', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
                                             <strong style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#17a2b8' }}>

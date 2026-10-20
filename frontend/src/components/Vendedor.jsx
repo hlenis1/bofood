@@ -7,13 +7,14 @@ import { VendedorAprobarPago } from './VendedorAprobarPago';
 import { BotonModoOscuro } from './BotonModoOscuro';
 
 const socket = io('');
-const obtenerDetalles = (d) => { try { return JSON.parse(d); } catch (e) { return []; } };
+const obtenerDetalles = (d) => { try { return typeof d === 'string' ? JSON.parse(d) : (d || []); } catch (e) { return []; } };
 
 function Vendedor() {
     const [misProductos, setMisProductos] = useState([]);
     const [pedidos, setPedidos] = useState([]);
     const [usuarioInfo, setUsuarioInfo] = useState(null);
     const [vistaActiva, setVistaActiva] = useState('ventas');
+    const [subVistaVentas, setSubVistaVentas] = useState('activas'); // 'activas' | 'historial'
     const navigate = useNavigate();
 
     const [datosTienda, setDatosTienda] = useState(null);
@@ -53,6 +54,15 @@ function Vendedor() {
 
         axios.get(`/api/vendedor/tienda/${id}`)
             .then(res => setDatosTienda(res.data))
+            .catch(console.error);
+
+        axios.get('/api/tiendas')
+            .then(res => {
+                const miT = res.data.find(t => Number(t.usuario_id) === Number(id));
+                if (miT) {
+                    setDatosTienda(prev => ({ ...prev, ...miT }));
+                }
+            })
             .catch(console.error);
 
         axios.get('/api/recargas')
@@ -201,8 +211,33 @@ function Vendedor() {
 
     if (!usuarioInfo) return <p style={{textAlign: 'center', padding: '50px'}}>Cargando panel de ventas... ⏳</p>;
 
-    const misVentas = pedidos.filter(pedido => obtenerDetalles(pedido.detalles).some(d => Number(d.vendedor_id) === Number(usuarioInfo.id)));
+    // 📊 LÓGICA Y CÁLCULOS DE VENTAS, CALIFICACIONES Y DINERO RECAUDADO
+    const misVentas = pedidos.filter(pedido => {
+        const esSuVendedorDirecto = Number(pedido.vendedor_id) === Number(usuarioInfo.id);
+        const tieneProdSuVendedor = obtenerDetalles(pedido.detalles).some(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
+        return esSuVendedorDirecto || tieneProdSuVendedor;
+    });
+
     const ventasActivas = misVentas.filter(p => !['entregado', 'cancelado', 'cancelado_devuelto'].includes(p.estado));
+    const ventasEntregadas = misVentas.filter(p => p.estado === 'entregado');
+
+    const totalDineroRecaudado = ventasEntregadas.reduce((sum, p) => {
+        const itemsVendedor = obtenerDetalles(p.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
+        if (itemsVendedor.length > 0) {
+            const subtotal = itemsVendedor.reduce((s, item) => s + (Number(item.precio) * Number(item.cantidad)), 0);
+            return sum + subtotal;
+        }
+        return sum + Number(p.total || 0);
+    }, 0);
+
+    const calificacionesRecibidas = misVentas.filter(p => p.calificacion_tienda !== null && p.calificacion_tienda !== undefined);
+    const promCalificacion = datosTienda?.promedio_calificacion 
+        ? Number(datosTienda.promedio_calificacion) 
+        : (calificacionesRecibidas.length > 0 
+            ? calificacionesRecibidas.reduce((acc, p) => acc + Number(p.calificacion_tienda), 0) / calificacionesRecibidas.length 
+            : 0);
+    const cantCalificaciones = datosTienda?.total_calificaciones || calificacionesRecibidas.length;
+
     const estaTiendaAbierta = datosTienda?.abierta !== 0;
 
     return (
@@ -211,7 +246,7 @@ function Vendedor() {
             {/* INTERRUPTOR PRINCIPAL: TIENDA ABIERTA / CERRADA */}
             <div style={{ 
                 display: 'flex', 
-                justifyContent: 'space-between', 
+                justify: 'space-between', 
                 alignItems: 'center', 
                 backgroundColor: estaTiendaAbierta ? '#d4edda' : '#f8d7da', 
                 border: `2px solid ${estaTiendaAbierta ? '#28a745' : '#dc3545'}`,
@@ -271,13 +306,30 @@ function Vendedor() {
                         <button onClick={() => { localStorage.clear(); navigate('/login'); }} style={{ padding: '8px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salir</button>
                     </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px', marginBottom: '5px' }}>
-                    <span style={{ fontSize: '14px' }}>Dinero a tu favor (Por Cobrar al Admin):</span>
-                    <strong style={{ fontSize: '22px', color: '#28a745' }}>${dineroAFavor.toLocaleString()}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#343a40', padding: '10px', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '14px' }}>Saldo Prepago (Para Comisiones):</span>
-                    <strong style={{ fontSize: '18px', color: miSaldo <= 0 ? '#dc3545' : '#17a2b8' }}>${miSaldo.toLocaleString()}</strong>
+
+                {/* 📈 RESUMEN DE SALDOS, VENTAS Y ESTRELLAS */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginTop: '5px' }}>
+                    <div style={{ backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>💵 Total Recaudado en Ventas:</span>
+                        <strong style={{ fontSize: '18px', color: '#ffc107' }}>${totalDineroRecaudado.toLocaleString()}</strong>
+                    </div>
+
+                    <div style={{ backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>⭐ Calificación Promedio:</span>
+                        <strong style={{ fontSize: '18px', color: '#ffc107' }}>
+                            {promCalificacion > 0 ? `⭐ ${promCalificacion.toFixed(1)} / 5.0 (${cantCalificaciones})` : 'Sin reseñas'}
+                        </strong>
+                    </div>
+
+                    <div style={{ backgroundColor: '#563d7c', padding: '10px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>Dinero a tu favor (Admin):</span>
+                        <strong style={{ fontSize: '18px', color: '#28a745' }}>${dineroAFavor.toLocaleString()}</strong>
+                    </div>
+
+                    <div style={{ backgroundColor: '#343a40', padding: '10px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '12px', display: 'block', opacity: 0.9 }}>Saldo Prepago (Comisiones):</span>
+                        <strong style={{ fontSize: '18px', color: miSaldo <= 0 ? '#dc3545' : '#17a2b8' }}>${miSaldo.toLocaleString()}</strong>
+                    </div>
                 </div>
             </div>
 
@@ -294,41 +346,132 @@ function Vendedor() {
             {/* PESTAÑA: MIS VENTAS */}
             {vistaActiva === 'ventas' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <h3 style={{ margin: 0 }}>Pedidos Activos</h3>
-                    {ventasActivas.length === 0 ? <p style={{ color: '#666' }}>No hay pedidos pendientes por despachar.</p> : (
-                        ventasActivas.map(pedido => {
-                            const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
-                            return (
-                                <div key={pedido.id} style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                                        <div>
-                                            <strong style={{ fontSize: '18px', color: '#6f42c1' }}>Pedido #{pedido.id}</strong><br/>
-                                            <span style={{ fontSize: '13px', color: '#666' }}>{new Date(pedido.fecha_creacion).toLocaleString()}</span>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <span style={{ display: 'block', fontWeight: 'bold' }}>Cliente: {pedido.cliente}</span>
-                                            <span style={{ fontSize: '12px', color: '#007bff', fontWeight: 'bold' }}>{pedido.estado.replace('_', ' ').toUpperCase()}</span>
-                                        </div>
-                                    </div>
-                                    <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '6px', border: '1px solid #eee' }}>
-                                        <strong style={{ display: 'block', marginBottom: '8px' }}>Productos a preparar:</strong>
-                                        {misItems.map((item, i) => (
-                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-                                                <img src={item.imagen} alt="" style={{ width: '30px', height: '30px', borderRadius: '4px', objectFit: 'cover' }} />
-                                                <span><strong style={{ color: '#007bff' }}>{item.cantidad}x</strong> {item.nombre}</span>
+                    {/* SUB-SELECTOR DE PESTAÑA DE VENTAS */}
+                    <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid #ddd', pb: '10px' }}>
+                        <button 
+                            onClick={() => setSubVistaVentas('activas')}
+                            style={{ 
+                                padding: '8px 16px', 
+                                border: 'none', 
+                                borderBottom: subVistaVentas === 'activas' ? '3px solid #17a2b8' : 'none', 
+                                backgroundColor: 'transparent', 
+                                fontWeight: 'bold', 
+                                color: subVistaVentas === 'activas' ? '#17a2b8' : '#666',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            🛵 Pedidos Activos ({ventasActivas.length})
+                        </button>
+                        <button 
+                            onClick={() => setSubVistaVentas('historial')}
+                            style={{ 
+                                padding: '8px 16px', 
+                                border: 'none', 
+                                borderBottom: subVistaVentas === 'historial' ? '3px solid #17a2b8' : 'none', 
+                                backgroundColor: 'transparent', 
+                                fontWeight: 'bold', 
+                                color: subVistaVentas === 'historial' ? '#17a2b8' : '#666',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            📜 Ventas Realizadas y Reseñas ({ventasEntregadas.length})
+                        </button>
+                    </div>
+
+                    {/* VISTA 1: PEDIDOS ACTIVOS */}
+                    {subVistaVentas === 'activas' && (
+                        <div>
+                            {ventasActivas.length === 0 ? <p style={{ color: '#666' }}>No hay pedidos pendientes por despachar.</p> : (
+                                ventasActivas.map(pedido => {
+                                    const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
+                                    return (
+                                        <div key={pedido.id} style={{ padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                                <div>
+                                                    <strong style={{ fontSize: '18px', color: '#6f42c1' }}>Pedido #{pedido.id}</strong><br/>
+                                                    <span style={{ fontSize: '13px', color: '#666' }}>{new Date(pedido.fecha_creacion).toLocaleString()}</span>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <span style={{ display: 'block', fontWeight: 'bold' }}>Cliente: {pedido.cliente}</span>
+                                                    <span style={{ fontSize: '12px', color: '#007bff', fontWeight: 'bold' }}>{pedido.estado.replace('_', ' ').toUpperCase()}</span>
+                                                </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        {pedido.estado === 'pendiente' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'en_preparacion')} style={{ flex: 1, padding: '12px', backgroundColor: '#fd7e14', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>👨‍🍳 Empezar a Preparar</button>}
-                                        {pedido.estado === 'en_preparacion' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'listo_para_entrega')} style={{ flex: 1, padding: '12px', backgroundColor: '#6f42c1', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Empacado y Listo</button>}
-                                        {pedido.estado === 'listo_para_entrega' && <div style={{ flex: 1, textAlign: 'center', padding: '12px', backgroundColor: '#e9ecef', color: '#555', borderRadius: '4px', fontWeight: 'bold' }}>⏳ Esperando al Domiciliario...</div>}
-                                        {pedido.estado === 'llevando_tu_pedido' && <div style={{ flex: 1, textAlign: 'center', padding: '12px', backgroundColor: '#cce5ff', color: '#004085', borderRadius: '4px', fontWeight: 'bold', border: '1px solid #b8daff' }}>🛵 El domiciliario lo está llevando</div>}
-                                    </div>
-                                </div>
-                            );
-                        })
+                                            <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '6px', border: '1px solid #eee' }}>
+                                                <strong style={{ display: 'block', marginBottom: '8px' }}>Productos a preparar:</strong>
+                                                {misItems.map((item, i) => (
+                                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+                                                        <img src={item.imagen} alt="" style={{ width: '30px', height: '30px', borderRadius: '4px', objectFit: 'cover' }} />
+                                                        <span><strong style={{ color: '#007bff' }}>{item.cantidad}x</strong> {item.nombre}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                {pedido.estado === 'pendiente' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'en_preparacion')} style={{ flex: 1, padding: '12px', backgroundColor: '#fd7e14', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>👨‍🍳 Empezar a Preparar</button>}
+                                                {pedido.estado === 'en_preparacion' && <button onClick={() => cambiarEstadoPedido(pedido.id, 'listo_para_entrega')} style={{ flex: 1, padding: '12px', backgroundColor: '#6f42c1', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Empacado y Listo</button>}
+                                                {pedido.estado === 'listo_para_entrega' && <div style={{ flex: 1, textAlign: 'center', padding: '12px', backgroundColor: '#e9ecef', color: '#555', borderRadius: '4px', fontWeight: 'bold' }}>⏳ Esperando al Domiciliario...</div>}
+                                                {pedido.estado === 'llevando_tu_pedido' && <div style={{ flex: 1, textAlign: 'center', padding: '12px', backgroundColor: '#cce5ff', color: '#004085', borderRadius: '4px', fontWeight: 'bold', border: '1px solid #b8daff' }}>🛵 El domiciliario lo está llevando</div>}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
                     )}
+
+                    {/* VISTA 2: HISTORIAL DE VENTAS Y OPINIONES/ESTRELLAS */}
+                    {subVistaVentas === 'historial' && (
+                        <div>
+                            {ventasEntregadas.length === 0 ? <p style={{ color: '#666' }}>Aún no hay ventas entregadas registradas.</p> : (
+                                ventasEntregadas.map(pedido => {
+                                    const misItems = obtenerDetalles(pedido.detalles).filter(d => Number(d.vendedor_id) === Number(usuarioInfo.id));
+                                    const subtotalVendedor = misItems.reduce((acc, item) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
+                                    const tieneCalificacion = pedido.calificacion_tienda !== null && pedido.calificacion_tienda !== undefined;
+
+                                    return (
+                                        <div key={pedido.id} style={{ padding: '15px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '8px' }}>
+                                                <div>
+                                                    <strong style={{ fontSize: '16px' }}>Pedido #{pedido.id}</strong>
+                                                    <span style={{ fontSize: '12px', color: '#888', marginLeft: '10px' }}>{new Date(pedido.fecha_creacion).toLocaleDateString()}</span>
+                                                </div>
+                                                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#28a745' }}>
+                                                    +${(subtotalVendedor || Number(pedido.total)).toLocaleString()}
+                                                </span>
+                                            </div>
+
+                                            <div style={{ fontSize: '13px', color: '#555', marginBottom: '8px' }}>
+                                                <strong>Cliente:</strong> {pedido.cliente} | <strong>Método:</strong> {pedido.metodo_pago.toUpperCase()}
+                                            </div>
+
+                                            {/* ⭐ CALIFICACIÓN Y COMENTARIO DEL CLIENTE */}
+                                            <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '6px', border: '1px solid #ffeeba', marginTop: '10px' }}>
+                                                <strong style={{ fontSize: '13px', color: '#856404', display: 'block' }}>
+                                                    ⭐ Calificación de la Tienda:
+                                                </strong>
+                                                {tieneCalificacion ? (
+                                                    <div>
+                                                        <span style={{ fontSize: '16px', color: '#ffc107', fontWeight: 'bold' }}>
+                                                            {'⭐'.repeat(pedido.calificacion_tienda)} ({pedido.calificacion_tienda}/5)
+                                                        </span>
+                                                        {pedido.comentario_calificacion && (
+                                                            <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontStyle: 'italic', color: '#856404' }}>
+                                                                💬 "{pedido.comentario_calificacion}"
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span style={{ fontSize: '12px', color: '#856404', fontStyle: 'italic' }}>
+                                                        ⏳ El cliente no ha calificado este pedido todavía.
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+
                 </div>
             )}
 
