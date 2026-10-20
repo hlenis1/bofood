@@ -72,8 +72,8 @@ const ejecutarParche = async () => {
         "ALTER TABLE pedidos ADD COLUMN estado_pago VARCHAR(50) DEFAULT 'pendiente'",
         "ALTER TABLE pedidos ADD COLUMN motivo_cancelacion TEXT DEFAULT NULL",
         
-        // 💬 COLUMNA PARA PERSISTENCIA DE CHAT CLIENTE <-> DOMICILIARIO
-        "ALTER TABLE pedidos ADD COLUMN chat TEXT DEFAULT '[]'",
+        // 💬 FIX: Se remueve DEFAULT '[]' porque la columna TEXT no lo soporta en MySQL
+        "ALTER TABLE pedidos ADD COLUMN chat TEXT",
 
         `CREATE TABLE IF NOT EXISTS recargas (
             id INT AUTO_INCREMENT PRIMARY KEY, 
@@ -156,7 +156,7 @@ io.on('connection', (socket) => {
 });
 
 // ==========================================
-// 💬 CHAT Y MENSAJES RÁPIDOS EN TIEMPO REAL CON AUTO-CREACIÓN DE COLUMNA
+// 💬 CHAT Y MENSAJES RÁPIDOS EN TIEMPO REAL
 // ==========================================
 app.post('/api/pedidos/:id/mensaje', async (req, res) => {
     const { emisor, texto } = req.body;
@@ -169,8 +169,8 @@ app.post('/api/pedidos/:id/mensaje', async (req, res) => {
         try {
             [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
         } catch (errCol) {
-            // Si la columna no existe en MySQL, la crea automáticamente al vuelo
-            await db.query("ALTER TABLE pedidos ADD COLUMN chat TEXT DEFAULT '[]'");
+            // FIX: Se crea sin DEFAULT '[]'
+            await db.query("ALTER TABLE pedidos ADD COLUMN chat TEXT");
             [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
         }
 
@@ -485,8 +485,8 @@ app.post('/api/pedidos', async (req, res) => {
         const detallesString = typeof detalles === 'string' ? detalles : JSON.stringify(detalles);
 
         const [r] = await db.query(
-            'INSERT INTO pedidos (usuario_id, total, costo_domicilio, metodo_pago, banco_destino, referencia_pago, estado_pago, detalles, vendedor_id, chat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-            [usuario_id, total, costo_domicilio || 0, metodo_pago, banco_destino || '', referencia_pago || '', estadoInicialPago, detallesString, vid, '[]']
+            'INSERT INTO pedidos (usuario_id, total, costo_domicilio, metodo_pago, banco_destino, referencia_pago, estado_pago, detalles, vendedor_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+            [usuario_id, total, costo_domicilio || 0, metodo_pago, banco_destino || '', referencia_pago || '', estadoInicialPago, detallesString, vid]
         );
         
         const [usr] = await db.query('SELECT nombre, direccion, telefono FROM usuarios WHERE id = ?', [usuario_id]);
