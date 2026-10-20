@@ -156,38 +156,53 @@ io.on('connection', (socket) => {
 });
 
 // ==========================================
-// 💬 CHAT Y MENSAJES RÁPIDOS EN TIEMPO REAL
+// 💬 CHAT Y MENSAJES RÁPIDOS EN TIEMPO REAL CON AUTO-CREACIÓN DE COLUMNA
 // ==========================================
-
 app.post('/api/pedidos/:id/mensaje', async (req, res) => {
     const { emisor, texto } = req.body;
+    if (!texto || !texto.trim()) {
+        return res.status(400).json({ error: 'El texto del mensaje no puede estar vacío.' });
+    }
+
     try {
-        const [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
-        if (!ped.length) return res.status(404).json({ message: 'Pedido no encontrado' });
+        let ped;
+        try {
+            [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
+        } catch (errCol) {
+            // Si la columna no existe en MySQL, la crea automáticamente al vuelo
+            await db.query("ALTER TABLE pedidos ADD COLUMN chat TEXT DEFAULT '[]'");
+            [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
+        }
+
+        if (!ped || !ped.length) {
+            return res.status(404).json({ error: 'Pedido no encontrado' });
+        }
 
         let chat = [];
         try { 
-            chat = typeof ped[0].chat === 'string' ? JSON.parse(ped[0].chat || '[]') : (ped[0].chat || []); 
+            const chatRaw = ped[0].chat;
+            chat = typeof chatRaw === 'string' ? JSON.parse(chatRaw || '[]') : (chatRaw || []); 
         } catch(e) { 
             chat = []; 
         }
+        if (!Array.isArray(chat)) chat = [];
 
         const nuevoMsg = {
             emisor, // 'cliente' | 'domiciliario'
-            texto,
-            fecha: new Date()
+            texto: texto.trim(),
+            fecha: new Date().toISOString()
         };
         chat.push(nuevoMsg);
 
         await db.query('UPDATE pedidos SET chat = ? WHERE id = ?', [JSON.stringify(chat), req.params.id]);
 
-        // Retransmisión por WebSockets en tiempo real
+        // Retransmitir mensaje vía WebSockets
         io.emit('nuevo_mensaje_pedido', { pedidoId: Number(req.params.id), chatCompleto: chat });
 
         res.json({ success: true, chat });
     } catch (e) {
         console.error("Error al procesar mensaje de chat:", e);
-        res.status(500).json({ error: 'Error interno al enviar mensaje' });
+        res.status(500).json({ error: 'Error interno en la BD: ' + e.message });
     }
 });
 

@@ -508,7 +508,7 @@ function Domiciliario() {
                                                         onClick={async () => {
                                                             try {
                                                                 await axios.post(`/api/pedidos/${pedido.id}/mensaje`, { emisor: 'domiciliario', texto: est });
-                                                            } catch(e) { console.error(e); }
+                                                            } catch(e) { console.error(e); alert("❌ Error al enviar mensaje: " + (e.response?.data?.error || e.message)); }
                                                         }}
                                                         style={{ backgroundColor: '#2a2a3d', color: '#fff', border: '1px solid #17a2b8', padding: '5px 10px', borderRadius: '15px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
                                                     >
@@ -524,7 +524,7 @@ function Domiciliario() {
                                                 try {
                                                     await axios.post(`/api/pedidos/${pedido.id}/mensaje`, { emisor: 'domiciliario', texto: text });
                                                     e.target.reset();
-                                                } catch(err) { console.error(err); }
+                                                } catch(err) { console.error(err); alert("❌ Error al enviar mensaje: " + (err.response?.data?.error || err.message)); }
                                             }} style={{ display: 'flex', gap: '6px' }}>
                                                 <input type="text" name="msg" placeholder="Escribe un mensaje al cliente..." style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #555', backgroundColor: '#222', color: '#fff', fontSize: '12px' }} />
                                                 <button type="submit" style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Enviar</button>

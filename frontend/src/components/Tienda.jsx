@@ -593,7 +593,9 @@ function Tienda() {
                                                             <button 
                                                                 key={idx}
                                                                 onClick={async () => {
-                                                                    await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: est });
+                                                                    try {
+                                                                        await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: est });
+                                                                    } catch(e) { console.error(e); alert("❌ Error al enviar mensaje: " + (e.response?.data?.error || e.message)); }
                                                                 }}
                                                                 style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
                                                             >
@@ -606,8 +608,10 @@ function Tienda() {
                                                         e.preventDefault();
                                                         const text = e.target.msg.value.trim();
                                                         if (!text) return;
-                                                        await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: text });
-                                                        e.target.reset();
+                                                        try {
+                                                            await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: text });
+                                                            e.target.reset();
+                                                        } catch(err) { console.error(err); alert("❌ Error al enviar mensaje: " + (err.response?.data?.error || err.message)); }
                                                     }} style={{ display: 'flex', gap: '5px' }}>
                                                         <input type="text" name="msg" placeholder="Escribe al repartidor..." style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid #17a2b8', fontSize: '11px' }} />
                                                         <button type="submit" style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer' }}>Enviar</button>
