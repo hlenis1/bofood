@@ -52,6 +52,7 @@ app.use('/uploads', express.static(uploadDir, {
 const ejecutarParche = async () => {
     const queries = [
         "ALTER TABLE usuarios MODIFY COLUMN rol VARCHAR(50) DEFAULT 'cliente'",
+        "ALTER TABLE pedidos ADD COLUMN chat TEXT DEFAULT '[]'", //anadido
         "ALTER TABLE pedidos MODIFY COLUMN estado VARCHAR(50) DEFAULT 'pendiente'",
         "ALTER TABLE usuarios ADD COLUMN saldo DECIMAL(10,2) DEFAULT 0",
         "ALTER TABLE usuarios ADD COLUMN comision_domicilio INT DEFAULT 15",
@@ -311,6 +312,40 @@ app.post('/api/bancos', upload.single('imagen'), async (req, res) => {
 });
 
 app.delete('/api/bancos/:id', async (req, res) => { try { await db.query('DELETE FROM bancos WHERE id = ?', [req.params.id]); res.json({ success: true }); } catch (e) { res.status(500).send('Error'); } });
+
+
+// 💬 ENDPOINT PARA ENVIAR MENSAJES Y ESTADOS RÁPIDOS (CLIENTE <-> DOMICILIARIO)
+app.post('/api/pedidos/:id/mensaje', async (req, res) => {
+    const { emisor, texto } = req.body;
+    try {
+        const [ped] = await db.query('SELECT chat FROM pedidos WHERE id = ?', [req.params.id]);
+        if (!ped.length) return res.status(404).json({ message: 'Pedido no encontrado' });
+
+        let chat = [];
+        try { chat = JSON.parse(ped[0].chat || '[]'); } catch(e) { chat = []; }
+
+        const nuevoMsg = {
+            emisor, // 'cliente' | 'domiciliario'
+            texto,
+            fecha: new Date()
+        };
+        chat.push(nuevoMsg);
+
+        await db.query('UPDATE pedidos SET chat = ? WHERE id = ?', [JSON.stringify(chat), req.params.id]);
+
+        // Retransmitir por WebSockets a todos los clientes conectados
+        io.emit('nuevo_mensaje_pedido', { pedidoId: Number(req.params.id), chatCompleto: chat });
+        
+        res.json({ success: true, chat });
+    } catch (e) {
+        console.error("Error al enviar mensaje:", e);
+        res.status(500).json({ error: 'Error interno al procesar el mensaje' });
+    }
+});
+
+
+
+
 
 // ==========================================
 // 🛍 PRODUCTOS CON DATOS DE LA TIENDA

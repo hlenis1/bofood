@@ -139,12 +139,16 @@ function Tienda() {
         );
         socket.on('pedido_eliminado', (id) => setMisPedidos(prev => prev.filter(p => p.id !== Number(id))));
         socket.on('ubicacion_domiciliario', (data) => setGpsDomiciliario(prev => ({ ...prev, [data.pedidoId]: { lat: data.lat, lon: data.lon } })));
+        socket.on('nuevo_mensaje_pedido', ({ pedidoId, chatCompleto }) => {
+            setMisPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, chat: JSON.stringify(chatCompleto) } : p));
+        });
 
         return () => { 
             socket.off('catalogo_actualizado'); 
             socket.off('estado_actualizado'); 
             socket.off('pedido_eliminado'); 
             socket.off('ubicacion_domiciliario'); 
+            socket.off('nuevo_mensaje_pedido');
         };
     }, [usuarioInfo]);
 
@@ -555,6 +559,60 @@ function Tienda() {
                                                 ) : (
                                                     <p style={{ margin: 0, textAlign: 'center', fontSize: '13px', color: '#17a2b8', fontWeight: 'bold' }}>📡 Ubicando repartidor...</p>
                                                 )}
+
+                                                {/* 💬 SECCIÓN CHAT Y ESTADOS RÁPIDOS CLIENTE */}
+                                                <div style={{ marginTop: '12px', borderTop: '1px solid #bce5eb', paddingTop: '10px' }}>
+                                                    <strong style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#0c5460' }}>
+                                                        💬 Mensajes y Estados con el Repartidor:
+                                                    </strong>
+
+                                                    <div style={{ maxHeight: '120px', overflowY: 'auto', backgroundColor: '#ffffff', padding: '8px', borderRadius: '6px', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '5px', border: '1px solid #bce5eb' }}>
+                                                        {(() => {
+                                                            let chatList = [];
+                                                            try { chatList = typeof pedido.chat === 'string' ? JSON.parse(pedido.chat || '[]') : (pedido.chat || []); } catch(e) {}
+                                                            if (chatList.length === 0) return <span style={{ fontSize: '11px', color: '#888', textAlign: 'center' }}>Sin mensajes aún</span>;
+                                                            return chatList.map((m, idx) => (
+                                                                <div key={idx} style={{ 
+                                                                    alignSelf: m.emisor === 'cliente' ? 'flex-end' : 'flex-start',
+                                                                    backgroundColor: m.emisor === 'cliente' ? '#007bff' : '#6c757d',
+                                                                    color: 'white',
+                                                                    padding: '5px 10px',
+                                                                    borderRadius: '10px',
+                                                                    fontSize: '11px',
+                                                                    maxWidth: '85%'
+                                                                }}>
+                                                                    <span style={{ fontSize: '9px', opacity: 0.8, display: 'block' }}>{m.emisor === 'cliente' ? 'Tú' : 'Repartidor'}</span>
+                                                                    {m.texto}
+                                                                </div>
+                                                            ));
+                                                        })()}
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                                                        {["👋 ¡Te espero abajo!", "🔑 Ya salgo", "⌛ 2 minutos porfa", "🚪 Dejar en portería"].map((est, idx) => (
+                                                            <button 
+                                                                key={idx}
+                                                                onClick={async () => {
+                                                                    await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: est });
+                                                                }}
+                                                                style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '12px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                            >
+                                                                {est}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    <form onSubmit={async (e) => {
+                                                        e.preventDefault();
+                                                        const text = e.target.msg.value.trim();
+                                                        if (!text) return;
+                                                        await axios.post(`${API_URL}/api/pedidos/${pedido.id}/mensaje`, { emisor: 'cliente', texto: text });
+                                                        e.target.reset();
+                                                    }} style={{ display: 'flex', gap: '5px' }}>
+                                                        <input type="text" name="msg" placeholder="Escribe al repartidor..." style={{ flex: 1, padding: '6px', borderRadius: '4px', border: '1px solid #17a2b8', fontSize: '11px' }} />
+                                                        <button type="submit" style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer' }}>Enviar</button>
+                                                    </form>
+                                                </div>
                                             </div>
                                         )}
 
@@ -652,19 +710,17 @@ function Tienda() {
                 padding: '8px 0',
                 zIndex: 1000
             }}>
-                {/* BOTÓN 1: TIENDAS */}
                 <button 
                     onClick={() => setVistaActiva('tiendas')}
-                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'tiendas' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'tiendas' ? 'bold' : 'normal', transition: 'all 0.2s' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'tiendas' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'tiendas' ? 'bold' : 'normal' }}
                 >
                     <span style={{ fontSize: '20px', marginBottom: '2px' }}>🏪</span>
                     Tiendas
                 </button>
 
-                {/* BOTÓN 2: CARRITO CON INSIGNIA NUMÉRICA */}
                 <button 
                     onClick={() => setVistaActiva('carrito')}
-                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'carrito' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'carrito' ? 'bold' : 'normal', position: 'relative', transition: 'all 0.2s' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'carrito' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'carrito' ? 'bold' : 'normal', position: 'relative' }}
                 >
                     <span style={{ fontSize: '20px', marginBottom: '2px' }}>🛒</span>
                     Carrito
@@ -675,10 +731,9 @@ function Tienda() {
                     )}
                 </button>
 
-                {/* BOTÓN 3: SEGUIMIENTO CON INSIGNIA NUMÉRICA DE PEDIDOS PENDIENTES */}
                 <button 
                     onClick={() => setVistaActiva('seguimiento')}
-                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'seguimiento' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'seguimiento' ? 'bold' : 'normal', position: 'relative', transition: 'all 0.2s' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'seguimiento' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'seguimiento' ? 'bold' : 'normal', position: 'relative' }}
                 >
                     <span style={{ fontSize: '20px', marginBottom: '2px' }}>🛵</span>
                     Seguimiento
@@ -689,10 +744,9 @@ function Tienda() {
                     )}
                 </button>
 
-                {/* BOTÓN 4: HISTORIAL */}
                 <button 
                     onClick={() => setVistaActiva('historial')}
-                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'historial' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'historial' ? 'bold' : 'normal', transition: 'all 0.2s' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: vistaActiva === 'historial' ? '#007bff' : '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '11px', fontWeight: vistaActiva === 'historial' ? 'bold' : 'normal' }}
                 >
                     <span style={{ fontSize: '20px', marginBottom: '2px' }}>📜</span>
                     Historial

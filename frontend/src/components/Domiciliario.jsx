@@ -106,6 +106,10 @@ function Domiciliario() {
             cargarRecargas();
         };
 
+        const manejarNuevoMensaje = ({ pedidoId, chatCompleto }) => {
+            setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, chat: JSON.stringify(chatCompleto) } : p));
+        };
+
         cargarPedidos();
 
         socket.on('nuevo_pedido', cargarPedidos);
@@ -117,6 +121,7 @@ function Domiciliario() {
         socket.on('recarga_actualizada', manejarActualizacionesCuenta);
         socket.on('usuario_actualizado', manejarActualizacionesCuenta);
         socket.on('catalogo_actualizado', manejarActualizacionesCuenta);
+        socket.on('nuevo_mensaje_pedido', manejarNuevoMensaje);
 
         return () => {
             socket.off('nuevo_pedido', cargarPedidos); 
@@ -125,6 +130,7 @@ function Domiciliario() {
             socket.off('recarga_actualizada', manejarActualizacionesCuenta);
             socket.off('usuario_actualizado', manejarActualizacionesCuenta);
             socket.off('catalogo_actualizado', manejarActualizacionesCuenta);
+            socket.off('nuevo_mensaje_pedido', manejarNuevoMensaje);
             if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
         };
     }, [usuarioInfo]);
@@ -463,6 +469,67 @@ function Domiciliario() {
                                         <p style={{ textAlign: 'center', fontWeight: 'bold', color: '#17a2b8', fontSize: '13px', margin: '10px 0' }}>
                                             📡 Conectando antena GPS para calcular distancia...
                                         </p>
+                                    )}
+
+                                    {/* 💬 SECCIÓN CHAT Y ESTADOS RÁPIDOS EN TIEMPO REAL CON EL CLIENTE */}
+                                    {esMiViaje && (
+                                        <div style={{ backgroundColor: '#1e2d3d', border: '1px solid #17a2b8', padding: '12px', borderRadius: '8px', marginBottom: '15px' }}>
+                                            <strong style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#17a2b8' }}>
+                                                💬 Chat y Estados en Vivo con el Cliente:
+                                            </strong>
+
+                                            <div style={{ maxHeight: '130px', overflowY: 'auto', backgroundColor: '#111', padding: '8px', borderRadius: '6px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid #333' }}>
+                                                {(() => {
+                                                    let chatList = [];
+                                                    try { chatList = typeof pedido.chat === 'string' ? JSON.parse(pedido.chat || '[]') : (pedido.chat || []); } catch(e) {}
+                                                    if (chatList.length === 0) return <span style={{ fontSize: '11px', color: '#777', textAlign: 'center' }}>Sin mensajes aún</span>;
+                                                    return chatList.map((m, idx) => (
+                                                        <div key={idx} style={{ 
+                                                            alignSelf: m.emisor === 'domiciliario' ? 'flex-end' : 'flex-start',
+                                                            backgroundColor: m.emisor === 'domiciliario' ? '#17a2b8' : '#333',
+                                                            color: 'white',
+                                                            padding: '6px 12px',
+                                                            borderRadius: '12px',
+                                                            fontSize: '11px',
+                                                            maxWidth: '85%'
+                                                        }}>
+                                                            <span style={{ fontSize: '9px', opacity: 0.8, display: 'block' }}>{m.emisor === 'domiciliario' ? 'Tú (Repartidor)' : 'Cliente'}</span>
+                                                            {m.texto}
+                                                        </div>
+                                                    ));
+                                                })()}
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                                                {["🛵 Ya voy en camino", "📍 A 2 min de llegar", "🏠 ¡Estoy afuera!", "🚨 Hay tráfico"].map((est, idx) => (
+                                                    <button 
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await axios.post(`/api/pedidos/${pedido.id}/mensaje`, { emisor: 'domiciliario', texto: est });
+                                                            } catch(e) { console.error(e); }
+                                                        }}
+                                                        style={{ backgroundColor: '#2a2a3d', color: '#fff', border: '1px solid #17a2b8', padding: '5px 10px', borderRadius: '15px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                                                    >
+                                                        {est}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <form onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const text = e.target.msg.value.trim();
+                                                if (!text) return;
+                                                try {
+                                                    await axios.post(`/api/pedidos/${pedido.id}/mensaje`, { emisor: 'domiciliario', texto: text });
+                                                    e.target.reset();
+                                                } catch(err) { console.error(err); }
+                                            }} style={{ display: 'flex', gap: '6px' }}>
+                                                <input type="text" name="msg" placeholder="Escribe un mensaje al cliente..." style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #555', backgroundColor: '#222', color: '#fff', fontSize: '12px' }} />
+                                                <button type="submit" style={{ backgroundColor: '#17a2b8', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>Enviar</button>
+                                            </form>
+                                        </div>
                                     )}
 
                                     {esMiViaje ? (
