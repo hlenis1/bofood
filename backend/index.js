@@ -71,8 +71,6 @@ const ejecutarParche = async () => {
         "ALTER TABLE pedidos ADD COLUMN referencia_pago VARCHAR(100) DEFAULT ''",
         "ALTER TABLE pedidos ADD COLUMN estado_pago VARCHAR(50) DEFAULT 'pendiente'",
         "ALTER TABLE pedidos ADD COLUMN motivo_cancelacion TEXT DEFAULT NULL",
-        
-        // 💬 PERSISTENCIA DE CHAT (Compatibilidad MySQL TEXT)
         "ALTER TABLE pedidos ADD COLUMN chat TEXT",
 
         // ⭐ COLUMNAS PARA CALIFICACIÓN DE TIENDA Y DOMICILIARIO
@@ -210,7 +208,7 @@ app.post('/api/pedidos/:id/mensaje', async (req, res) => {
         if (!Array.isArray(chat)) chat = [];
 
         const nuevoMsg = {
-            emisor, // 'cliente' | 'domiciliario'
+            emisor,
             texto: texto.trim(),
             fecha: new Date().toISOString()
         };
@@ -636,37 +634,48 @@ app.put('/api/pedidos/:id/estado', async (req, res) => {
             const [adm] = await db.query("SELECT comision_domicilio FROM usuarios WHERE rol='admin' LIMIT 1");
             const comisionEstimada = (ped[0].costo_domicilio * (adm[0]?.comision_domicilio || 15)) / 100;
             const [domi] = await db.query('SELECT saldo FROM usuarios WHERE id = ?', [domiciliario_id]);
-            if (domi[0].saldo < comisionEstimada) {
+            if (domi && domi[0] && domi[0].saldo < comisionEstimada) {
                 return res.status(400).json({ message: `❌ SALDO INSUFICIENTE.\nDebes tener al menos $${comisionEstimada.toLocaleString()} para cubrir la comisión de este viaje.` });
             }
         }
 
-        if (estado === 'entregado' && ped[0].comision_cobrada == 0) {
+        // 🛡️ CONTROL ANTI-DUPLICACIÓN INDEPENDIENTE DE COMISIONES
+        if (estado === 'entregado') {
             const [admConfig] = await db.query("SELECT comision_domicilio, comision_vendedor FROM usuarios WHERE rol='admin' LIMIT 1");
-            
-            if (domiAsignado) {
+
+            // 1. Cobro de comisión de domicilio al Repartidor (solo si no se cobró previamente)
+            if (domiAsignado && Number(ped[0].comision_cobrada || 0) === 0) {
                 const comisionDomi = (ped[0].costo_domicilio * (admConfig[0]?.comision_domicilio || 15)) / 100;
                 await db.query('UPDATE usuarios SET saldo = saldo - ? WHERE id = ?', [comisionDomi, domiAsignado]);
-                await db.query('UPDATE pedidos SET comision_cobrada = ? WHERE id = ?', [comisionDomi, req.params.id]);
+                await db.query('UPDATE pedidos SET comision_cobrada = ? WHERE id = ?', [comisionDomi > 0 ? comisionDomi : 0.01, req.params.id]);
             }
 
-            let totalComisionVendedores = 0;
-            const detallesCarrito = typeof ped[0].detalles === 'string' ? JSON.parse(ped[0].detalles) : ped[0].detalles;
-            for (let prod of detallesCarrito) {
-                if (prod.vendedor_id) {
-                    const [vendedor] = await db.query('SELECT rol FROM usuarios WHERE id = ?', [prod.vendedor_id]);
-                    if (vendedor[0] && vendedor[0].rol === 'vendedor') {
-                        const totalVentaProducto = Number(prod.precio) * Number(prod.cantidad);
-                        const comisionAdmin = totalVentaProducto * ((admConfig[0]?.comision_vendedor || 10) / 100);
-                        const gananciaVendedor = totalVentaProducto - comisionAdmin;
-                        totalComisionVendedores += comisionAdmin;
-                        
-                        await db.query('UPDATE usuarios SET saldo = saldo - ? WHERE id = ?', [comisionAdmin, prod.vendedor_id]);
-                        await db.query('UPDATE usuarios SET dinero_a_favor = dinero_a_favor + ? WHERE id = ?', [gananciaVendedor, prod.vendedor_id]);
+            // 2. Cobro de comisión y acreditación de ganancias a Vendedores (solo si no se cobró previamente)
+            if (Number(ped[0].comision_productos_cobrada || 0) === 0) {
+                let totalComisionVendedores = 0;
+                let detallesCarrito = [];
+                try {
+                    detallesCarrito = typeof ped[0].detalles === 'string' ? JSON.parse(ped[0].detalles) : (ped[0].detalles || []);
+                } catch(e) { detallesCarrito = []; }
+
+                if (Array.isArray(detallesCarrito)) {
+                    for (let prod of detallesCarrito) {
+                        if (prod.vendedor_id) {
+                            const [vendedor] = await db.query('SELECT rol FROM usuarios WHERE id = ?', [prod.vendedor_id]);
+                            if (vendedor[0] && vendedor[0].rol === 'vendedor') {
+                                const totalVentaProducto = Number(prod.precio) * Number(prod.cantidad);
+                                const comisionAdmin = totalVentaProducto * ((admConfig[0]?.comision_vendedor || 10) / 100);
+                                const gananciaVendedor = totalVentaProducto - comisionAdmin;
+                                totalComisionVendedores += comisionAdmin;
+                                
+                                await db.query('UPDATE usuarios SET saldo = saldo - ? WHERE id = ?', [comisionAdmin, prod.vendedor_id]);
+                                await db.query('UPDATE usuarios SET dinero_a_favor = dinero_a_favor + ? WHERE id = ?', [gananciaVendedor, prod.vendedor_id]);
+                            }
+                        }
                     }
                 }
+                await db.query('UPDATE pedidos SET comision_productos_cobrada = ? WHERE id = ?', [totalComisionVendedores > 0 ? totalComisionVendedores : 0.01, req.params.id]);
             }
-            await db.query('UPDATE pedidos SET comision_productos_cobrada = ? WHERE id = ?', [totalComisionVendedores, req.params.id]);
         }
 
         let query = 'UPDATE pedidos SET estado = ?'; 
@@ -736,7 +745,7 @@ app.put('/api/recargas/:id/estado', async (req, res) => {
 });
 
 // ========================================================
-// 🏪 TIENDAS CON PROMEDIO Y TOTAL DE CALIFICACIONES
+// 🏪 TIENDAS CON PROMEDIO Y TOTAL DE CALIFICACIONES (FIX GROUP BY)
 // ========================================================
 
 app.get('/api/tiendas', async (req, res) => {
@@ -748,8 +757,8 @@ app.get('/api/tiendas', async (req, res) => {
                 t.descripcion, 
                 t.logo_url, 
                 COALESCE(t.abierta, 1) AS abierta,
-                COALESCE(NULLIF(t.direccion, ''), u.direccion) AS direccion,
-                COALESCE(NULLIF(t.telefono, ''), u.telefono) AS telefono,
+                COALESCE(NULLIF(t.direccion, ''), u.direccion, '') AS direccion,
+                COALESCE(NULLIF(t.telefono, ''), u.telefono, '') AS telefono,
                 u.nombre AS propietario,
                 u.rol,
                 COALESCE(AVG(p.calificacion_tienda), 0) AS promedio_calificacion,
@@ -758,7 +767,7 @@ app.get('/api/tiendas', async (req, res) => {
             JOIN usuarios u ON t.usuario_id = u.id
             LEFT JOIN pedidos p ON p.vendedor_id = t.usuario_id AND p.calificacion_tienda IS NOT NULL
             WHERE u.rol IN ('vendedor', 'admin')
-            GROUP BY t.usuario_id, t.nombre, t.descripcion, t.logo_url, t.abierta, t.direccion, t.telefono, u.nombre, u.rol
+            GROUP BY t.usuario_id, t.nombre, t.descripcion, t.logo_url, t.abierta, t.direccion, t.telefono, u.direccion, u.telefono, u.nombre, u.rol
         `;
         const [tiendas] = await db.query(query);
         const formateadas = tiendas.map(t => ({
