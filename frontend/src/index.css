@@ -168,3 +168,15 @@ input:checked + .slider-modo:before {
   transform: translateX(24px);
   content: "🌙";
 }
+/* 📱 CORRECCIÓN PARA EVITAR SOLAPAMIENTO CON BOTONES DE ANDROID */
+body {
+  /* Añade un margen de seguridad en la parte inferior del documento */
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Si tu barra flotante (dock) usa posición fija en pantalla */
+div[class*="dock"], 
+nav[class*="dock"],
+.floating-dock {
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+}
