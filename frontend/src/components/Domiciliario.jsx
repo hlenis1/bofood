@@ -6,6 +6,19 @@ import { BotonModoOscuro } from './BotonModoOscuro';
 
 const socket = io('');
 
+// 🔔 FUNCIÓN HELPER PARA ENVIAR NOTIFICACIONES PUSH A LA APP DE EXPO NATIVA
+const notificarAppNativa = (titulo, mensaje) => {
+    if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: 'NOTIFICACION_PUSH',
+                title: titulo,
+                body: mensaje
+            })
+        );
+    }
+};
+
 const calcularDistancia = (lat1, lon1, lat2, lon2) => {
     const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180); 
@@ -108,15 +121,35 @@ function Domiciliario() {
 
         const manejarNuevoMensaje = ({ pedidoId, chatCompleto }) => {
             setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, chat: JSON.stringify(chatCompleto) } : p));
+
+            // 💬 Notificación nativa si el cliente envió un mensaje en el chat
+            const ultimoMsg = Array.isArray(chatCompleto) ? chatCompleto[chatCompleto.length - 1] : null;
+            if (ultimoMsg && ultimoMsg.emisor !== 'domiciliario') {
+                notificarAppNativa('💬 Mensaje del Cliente', ultimoMsg.texto || 'Tienes un nuevo mensaje en el chat.');
+            }
         };
 
         cargarPedidos();
 
-        socket.on('nuevo_pedido', cargarPedidos);
-        socket.on('estado_actualizado', (data) => {
+        // 🛵 EVENTOS DE SOCKET CON NOTIFICACIÓN A EXPO
+        const manejarNuevoPedidoSocket = () => {
             cargarPedidos();
-            if (data.estado === 'listo_para_entrega') audioNuevoViaje.play().catch(e=>console.log(e));
-        });
+            notificarAppNativa('🛵 ¡NUEVO PEDIDO DISPONIBLE!', 'Se ha registrado una nueva orden en el sistema.');
+        };
+
+        const manejarEstadoActualizadoSocket = (data) => {
+            cargarPedidos();
+            if (data.estado === 'listo_para_entrega') {
+                audioNuevoViaje.play().catch(e => console.log(e));
+                notificarAppNativa(
+                    '🛵 ¡PEDIDO LISTO PARA LLEVAR!',
+                    `El pedido #${data.id || data.pedidoId || ''} ya está listo para ser recogido.`
+                );
+            }
+        };
+
+        socket.on('nuevo_pedido', manejarNuevoPedidoSocket);
+        socket.on('estado_actualizado', manejarEstadoActualizadoSocket);
         socket.on('pedido_eliminado', cargarPedidos);
         socket.on('recarga_actualizada', manejarActualizacionesCuenta);
         socket.on('usuario_actualizado', manejarActualizacionesCuenta);
@@ -124,8 +157,8 @@ function Domiciliario() {
         socket.on('nuevo_mensaje_pedido', manejarNuevoMensaje);
 
         return () => {
-            socket.off('nuevo_pedido', cargarPedidos); 
-            socket.off('estado_actualizado'); 
+            socket.off('nuevo_pedido', manejarNuevoPedidoSocket); 
+            socket.off('estado_actualizado', manejarEstadoActualizadoSocket); 
             socket.off('pedido_eliminado', cargarPedidos);
             socket.off('recarga_actualizada', manejarActualizacionesCuenta);
             socket.off('usuario_actualizado', manejarActualizacionesCuenta);
@@ -280,7 +313,7 @@ function Domiciliario() {
             {/* 🏷️ BARRITA DE SALUDO Y MODO OSCURO */}
             <div className="domi-chip" style={{
                 display: 'flex',
-                justify: 'space-between',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 backgroundColor: 'var(--bg-chip, #f0f2f5)',
                 border: '1px solid var(--border-color, #e0e0e0)',
@@ -617,7 +650,7 @@ function Domiciliario() {
                 </div>
             )}
 
-            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR (FLOATING DOCK DEDICADO AL REPARTIDOR) */}
+            {/* 📌 BARRA DE NAVEGACIÓN FLOTANTE INFERIOR */}
             <div className="domi-dock" style={{
                 position: 'fixed',
                 bottom: '15px',
