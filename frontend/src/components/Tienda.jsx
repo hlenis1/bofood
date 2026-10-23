@@ -157,52 +157,68 @@ function Tienda() {
         socket.on('catalogo_actualizado', cargarDatos);
         
         socket.on('estado_actualizado', (data) => {
-            setMisPedidos(prev => prev.map(p => p.id === data.id ? { ...p, estado: data.estado, estado_pago: data.estado_pago || p.estado_pago, motivo_cancelacion: data.motivo_cancelacion } : p));
-            
-            // 🔔 NOTIFICAR AL CLIENTE SEGÚN EL NUEVO ESTADO
-            let titulo = '📦 Actualización de tu pedido';
-            let mensaje = `Tu pedido #${data.id} cambió de estado.`;
+            setMisPedidos(prev => {
+                // 🛑 VALIDAR SI EL PEDIDO PERTENECE A ESTE CLIENTE
+                const esMiPedido = prev.some(p => Number(p.id) === Number(data.id)) ||
+                                   Number(data.cliente_id) === Number(usuarioInfo.id) ||
+                                   Number(data.usuario_id) === Number(usuarioInfo.id);
 
-            switch (data.estado) {
-                case 'en_preparacion':
-                case 'preparando':
-                    titulo = '🍳 ¡Pedido en preparación!';
-                    mensaje = `La tienda está preparando tu pedido #${data.id}.`;
-                    break;
-                case 'listo_para_entrega':
-                    titulo = '📦 ¡Pedido empacado!';
-                    mensaje = `Tu pedido #${data.id} está listo para ser entregado.`;
-                    break;
-                case 'llevando_tu_pedido':
-                    titulo = '🛵 ¡Repartidor en camino!';
-                    mensaje = `El domiciliario ya lleva tu pedido #${data.id} hacia tu dirección.`;
-                    break;
-                case 'entregado':
-                    titulo = '🎉 ¡Pedido entregado!';
-                    mensaje = `Tu pedido #${data.id} ha sido entregado. ¡Gracias por tu compra!`;
-                    break;
-                case 'cancelado':
-                case 'cancelado_devuelto':
-                    titulo = '❌ Pedido cancelado';
-                    mensaje = `Tu pedido #${data.id} fue cancelado.`;
-                    break;
-                default:
-                    break;
-            }
-            notificarAppNativa(titulo, mensaje);
+                if (esMiPedido) {
+                    let titulo = '📦 Actualización de tu pedido';
+                    let mensaje = `Tu pedido #${data.id} cambió de estado.`;
+
+                    switch (data.estado) {
+                        case 'en_preparacion':
+                        case 'preparando':
+                            titulo = '🍳 ¡Pedido en preparación!';
+                            mensaje = `La tienda está preparando tu pedido #${data.id}.`;
+                            break;
+                        case 'listo_para_entrega':
+                            titulo = '📦 ¡Pedido empacado!';
+                            mensaje = `Tu pedido #${data.id} está listo para ser entregado.`;
+                            break;
+                        case 'llevando_tu_pedido':
+                            titulo = '🛵 ¡Repartidor en camino!';
+                            mensaje = `El domiciliario ya lleva tu pedido #${data.id} hacia tu dirección.`;
+                            break;
+                        case 'entregado':
+                            titulo = '🎉 ¡Pedido entregado!';
+                            mensaje = `Tu pedido #${data.id} ha sido entregado. ¡Gracias por tu compra!`;
+                            break;
+                        case 'cancelado':
+                        case 'cancelado_devuelto':
+                            titulo = '❌ Pedido cancelado';
+                            mensaje = `Tu pedido #${data.id} fue cancelado.`;
+                            break;
+                        default:
+                            break;
+                    }
+
+                    // 🔔 NOTIFICAR ÚNICAMENTE SI ES DE ESTE CLIENTE
+                    notificarAppNativa(titulo, mensaje);
+
+                    return prev.map(p => p.id === data.id ? { ...p, estado: data.estado, estado_pago: data.estado_pago || p.estado_pago, motivo_cancelacion: data.motivo_cancelacion } : p);
+                }
+
+                return prev;
+            });
         });
 
         socket.on('pedido_eliminado', (id) => setMisPedidos(prev => prev.filter(p => p.id !== Number(id))));
         socket.on('ubicacion_domiciliario', (data) => setGpsDomiciliario(prev => ({ ...prev, [data.pedidoId]: { lat: data.lat, lon: data.lon } })));
         
         socket.on('nuevo_mensaje_pedido', ({ pedidoId, chatCompleto }) => {
-            setMisPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, chat: JSON.stringify(chatCompleto) } : p));
-            
-            // 🔔 NOTIFICACIÓN CUANDO LLEGA MENSAJE DEL REPARTIDOR
-            const ultimoMsg = Array.isArray(chatCompleto) && chatCompleto.length > 0 ? chatCompleto[chatCompleto.length - 1] : null;
-            if (ultimoMsg && ultimoMsg.emisor !== 'cliente') {
-                notificarAppNativa(`💬 Mensaje del Repartidor (Pedido #${pedidoId})`, ultimoMsg.texto || 'Tienes un nuevo mensaje sobre tu entrega');
-            }
+            setMisPedidos(prev => {
+                const esMiPedido = prev.some(p => Number(p.id) === Number(pedidoId));
+                if (esMiPedido) {
+                    const ultimoMsg = Array.isArray(chatCompleto) && chatCompleto.length > 0 ? chatCompleto[chatCompleto.length - 1] : null;
+                    if (ultimoMsg && ultimoMsg.emisor !== 'cliente') {
+                        notificarAppNativa(`💬 Mensaje del Repartidor (Pedido #${pedidoId})`, ultimoMsg.texto || 'Tienes un nuevo mensaje sobre tu entrega');
+                    }
+                    return prev.map(p => p.id === pedidoId ? { ...p, chat: JSON.stringify(chatCompleto) } : p);
+                }
+                return prev;
+            });
         });
 
         return () => { 
