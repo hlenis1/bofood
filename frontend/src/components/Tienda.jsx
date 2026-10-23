@@ -7,6 +7,19 @@ import { BotonModoOscuro } from './BotonModoOscuro';
 const API_URL = '';
 const socket = io(API_URL);
 
+// 🔔 HELPER PARA NOTIFICACIONES NATIVAS EN APP EXPO
+const notificarAppNativa = (titulo, mensaje) => {
+    if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: 'NOTIFICACION_PUSH',
+                title: titulo,
+                body: mensaje
+            })
+        );
+    }
+};
+
 // 🎨 LOGOS E IMÁGENES POR DEFECTO
 const LOGO_DEFAULT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='50' fill='%23007bff'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='45' fill='white'%3E🏪%3C/text%3E%3C/svg%3E";
 const PROD_DEFAULT = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=500";
@@ -142,13 +155,54 @@ function Tienda() {
         cargarDatos();
 
         socket.on('catalogo_actualizado', cargarDatos);
-        socket.on('estado_actualizado', (data) => 
-            setMisPedidos(prev => prev.map(p => p.id === data.id ? { ...p, estado: data.estado, estado_pago: data.estado_pago || p.estado_pago, motivo_cancelacion: data.motivo_cancelacion } : p))
-        );
+        
+        socket.on('estado_actualizado', (data) => {
+            setMisPedidos(prev => prev.map(p => p.id === data.id ? { ...p, estado: data.estado, estado_pago: data.estado_pago || p.estado_pago, motivo_cancelacion: data.motivo_cancelacion } : p));
+            
+            // 🔔 NOTIFICAR AL CLIENTE SEGÚN EL NUEVO ESTADO
+            let titulo = '📦 Actualización de tu pedido';
+            let mensaje = `Tu pedido #${data.id} cambió de estado.`;
+
+            switch (data.estado) {
+                case 'en_preparacion':
+                case 'preparando':
+                    titulo = '🍳 ¡Pedido en preparación!';
+                    mensaje = `La tienda está preparando tu pedido #${data.id}.`;
+                    break;
+                case 'listo_para_entrega':
+                    titulo = '📦 ¡Pedido empacado!';
+                    mensaje = `Tu pedido #${data.id} está listo para ser entregado.`;
+                    break;
+                case 'llevando_tu_pedido':
+                    titulo = '🛵 ¡Repartidor en camino!';
+                    mensaje = `El domiciliario ya lleva tu pedido #${data.id} hacia tu dirección.`;
+                    break;
+                case 'entregado':
+                    titulo = '🎉 ¡Pedido entregado!';
+                    mensaje = `Tu pedido #${data.id} ha sido entregado. ¡Gracias por tu compra!`;
+                    break;
+                case 'cancelado':
+                case 'cancelado_devuelto':
+                    titulo = '❌ Pedido cancelado';
+                    mensaje = `Tu pedido #${data.id} fue cancelado.`;
+                    break;
+                default:
+                    break;
+            }
+            notificarAppNativa(titulo, mensaje);
+        });
+
         socket.on('pedido_eliminado', (id) => setMisPedidos(prev => prev.filter(p => p.id !== Number(id))));
         socket.on('ubicacion_domiciliario', (data) => setGpsDomiciliario(prev => ({ ...prev, [data.pedidoId]: { lat: data.lat, lon: data.lon } })));
+        
         socket.on('nuevo_mensaje_pedido', ({ pedidoId, chatCompleto }) => {
             setMisPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, chat: JSON.stringify(chatCompleto) } : p));
+            
+            // 🔔 NOTIFICACIÓN CUANDO LLEGA MENSAJE DEL REPARTIDOR
+            const ultimoMsg = Array.isArray(chatCompleto) && chatCompleto.length > 0 ? chatCompleto[chatCompleto.length - 1] : null;
+            if (ultimoMsg && ultimoMsg.emisor !== 'cliente') {
+                notificarAppNativa(`💬 Mensaje del Repartidor (Pedido #${pedidoId})`, ultimoMsg.texto || 'Tienes un nuevo mensaje sobre tu entrega');
+            }
         });
 
         return () => { 

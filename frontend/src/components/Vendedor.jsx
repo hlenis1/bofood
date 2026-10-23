@@ -9,6 +9,19 @@ import { BotonModoOscuro } from './BotonModoOscuro';
 const socket = io('');
 const obtenerDetalles = (d) => { try { return typeof d === 'string' ? JSON.parse(d) : (d || []); } catch (e) { return []; } };
 
+// 🔔 HELPER PARA NOTIFICACIONES NATIVAS EN APP EXPO
+const notificarAppNativa = (titulo, mensaje) => {
+    if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+                type: 'NOTIFICACION_PUSH',
+                title: titulo,
+                body: mensaje
+            })
+        );
+    }
+};
+
 function Vendedor() {
     const [misProductos, setMisProductos] = useState([]);
     const [pedidos, setPedidos] = useState([]);
@@ -102,9 +115,16 @@ function Vendedor() {
         const id = usuarioInfo.id;
         cargarDatos(id);
 
-        const manejarNuevoPedido = () => { 
+        const manejarNuevoPedido = (nuevoPedido) => { 
             cargarDatos(id); 
             audioNuevoPedido.play().catch(e => console.log(e)); 
+
+            // 🔔 NOTIFICAR A LA TIENDA CUANDO RECIBE UN PEDIDO
+            const idTexto = nuevoPedido?.id ? `#${nuevoPedido.id}` : '';
+            notificarAppNativa(
+                '🔔 ¡NUEVO PEDIDO RECIBIDO!',
+                `Tienes una nueva solicitud de orden ${idTexto} pendiente por preparar.`
+            );
         };
 
         const manejarActualizaciones = () => {
@@ -664,7 +684,7 @@ function Vendedor() {
                             display: 'flex', 
                             flexDirection: 'column', 
                             alignItems: 'center', 
-                            justifyContent: 'center',
+                            justify: 'center',
                             textAlign: 'center',
                             fontSize: '10px', 
                             fontWeight: 'bold',
